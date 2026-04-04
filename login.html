@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D печать</title>
+    <link rel="stylesheet" href="./site.css" />
+  </head>
+  <body>
+    <div class="login-wrap">
+      <section class="login-left" aria-label="Форма входа">
+        <div style="margin: 4px 0 14px;">
+          <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+        </div>
+        <h1 style="color: var(--accent);">Добро пожаловать!</h1>
+        <div class="sub">Мы рады видеть тебя</div>
+
+        <form id="auth-form" class="login-form">
+          <label class="field">
+            <span class="label">Номер телефона</span>
+            <input class="input" type="tel" name="phone" placeholder="Введите номер" required />
+          </label>
+          <label class="field">
+            <span class="label">Пароль</span>
+            <input class="input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
+          </label>
+
+          <button class="btn btn-primary" type="submit" style="padding:10px 16px; border-radius:12px; width:100%;">
+            Войти
+          </button>
+          <button id="register-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
+            Создать аккаунт
+          </button>
+
+          <div id="auth-status" class="login-note" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <section class="login-right" aria-hidden="true">
+        <div class="brand">3D print</div>
+      </section>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container site-footer__inner">
+        <div>
+          <div class="site-footer__brand">3D Print</div>
+          <div class="site-footer__text">
+            Изготавливаем 3D модели и печатаем по вашим файлам. Плейсхолдер текста — подставишь
+            описание и контакты.
+          </div>
+        </div>
+        <nav class="site-footer__nav" aria-label="Навигация подвала">
+          <a href="landing.html">Главная</a>
+          <a href="print-step-1.html">Услуги</a>
+          <a href="orders.html">Мои заказы</a>
+          <a href="profile.html">Профиль</a>
+          <a href="payment.html">Оплата</a>
+        </nav>
+        <div class="site-footer__right">
+          <div class="site-footer__contacts">+7 (000) 000-00-00</div>
+          <div class="site-footer__copy">© 2026 3D Print. Все права защищены.</div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="./scripts/login.js"></script>
+  </body>
+</html>

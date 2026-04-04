@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Поддержка — ADMIN CORE</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="admin-root">
+    <aside class="admin-sidebar">
+      <div class="admin-brand">ADMIN CORE</div>
+      <nav class="admin-nav">
+        <button class="nav-button" onclick="window.location.href='admin.html'">Главная</button>
+        <button class="nav-button" onclick="window.location.href='admin-orders.html'">Заказы</button>
+        <button class="nav-button" onclick="window.location.href='admin-clients.html'">Клиенты</button>
+        <button class="nav-button active">Поддержка</button>
+        <button class="nav-button" onclick="window.location.href='admin-warehouse.html'">Склад</button>
+        <button class="nav-button" onclick="window.location.href='admin-settings.html'">Настройки UI</button>
+      </nav>
+      <div class="admin-status-card">
+        <div class="server-status-title">СТАТУС СЕРВЕРА</div>
+        <div class="server-status-line">
+          <span class="status-dot online"></span>
+          <span class="status-label">ONLINE</span>
+        </div>
+      </div>
+      <button class="nav-button logout-btn" onclick="adminLogout()">Выйти</button>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div class="admin-search">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" placeholder="Поиск обращений, клиентов..." aria-label="Поиск" />
+        </div>
+        <div class="admin-usercard">
+          <div class="user-avatar">А</div>
+          <div class="user-info">
+            <strong id="admin-name">Иван Админов</strong>
+            <span>SUPER ADMIN</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="admin-screen">
+        <div class="support-page-header">
+          <h1>Обращения в поддержку</h1>
+          <p>Управление запросами клиентов и обращениями</p>
+          <div class="support-page-actions">
+            <button id="refresh-support-btn" class="btn-secondary">Обновить</button>
+            <button id="export-support-btn" class="btn-secondary">Экспорт CSV</button>
+          </div>
+        </div>
+
+        <div class="support-filters">
+          <select id="filter-support-status" class="filter-select">
+            <option value="">Все статусы</option>
+            <option value="новое">Новое</option>
+            <option value="в_обработке">В обработке</option>
+            <option value="решено">Решено</option>
+            <option value="закрыто">Закрыто</option>
+          </select>
+          <input type="text" id="filter-support-client" placeholder="Поиск по клиенту" class="filter-input" />
+          <input type="date" id="filter-support-date" class="filter-input" />
+        </div>
+
+        <div id="support-list-container" class="support-tickets-container">
+          <div class="support-tickets-list" id="support-tickets">
+            <div class="empty-state">Загрузка обращений...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="scripts/admin-support.js" defer></script>
+</body>
+</html>

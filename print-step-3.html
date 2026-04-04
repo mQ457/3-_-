@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D печать</title>
+  <link rel="icon" type="image/png" href="image/3D print(1).png">
+  <link rel="stylesheet" href="./site.css" />
+</head>
+
+<body class="bg-print">
+  <header class="landing-header">
+    <div class="container landing-header__inner">
+      <div class="landing-brand">3D Print</div>
+
+      <div class="landing-header__actions">
+        <a class="btn btn-ghost landing-header__btn" href="print-step-3.html" role="button">Заказать</a>
+        <a class="btn btn-primary landing-header__btn landing-header__btn--red" href="login.html" role="button">
+          Личный кабинет
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top: 18px; padding-bottom: 40px;">
+    <div class="label" style="margin: 0 0 10px;">Выберите услугу:</div>
+
+    <div class="pill-group" role="tablist" aria-label="Выбор услуги">
+      <a class="pill" href="print-step-3.html" role="tab" aria-selected="false">3D печать</a>
+      <a class="pill is-inactive" href="print-step-2.html" role="tab" aria-selected="false">Моделирование</a>
+      <a class="pill is-inactive" href="print-step-1.html" role="tab" aria-selected="false">Сканирование</a>
+    </div>
+
+    <div class="stepper" aria-label="Прогресс заказа">
+      <div class="step is-active">
+        <div class="circle">1</div>
+        <div class="name">Загрузка</div>
+      </div>
+      <div class="step">
+        <div class="circle">2</div>
+        <div class="name">Настройка</div>
+      </div>
+      <div class="step">
+        <div class="circle">3</div>
+        <div class="name">Оплата</div>
+      </div>
+      <div class="step">
+        <div class="circle">4</div>
+        <div class="name">Готово</div>
+      </div>
+    </div>
+
+    <div style="margin: 4px 0 14px;">
+      <div class="breadcrumb"><span class="arrow"><img src="image/Frame_1_450.png" alt="arrow"
+            style="width: 19px; height: 19px;"></span><a href="landing.html">Главная</a></div>
+    </div>
+
+    <div class="print-grid">
+      <section class="dash-panel print-left2">
+        <div class="panel-grey" style="position:relative; display:flex; align-items:center; justify-content:center;">
+          <div style="position:absolute; top: 10px; right: 14px; display:flex; align-items:center; gap:10px;">
+            <div class="img-ph" style="width:19px;height:19px; border: 0px;">
+              <img src="image/Frame_1_326.png" alt="">
+            </div>
+            <span class="muted-small" style="font-size:12px;">Название файла</span>
+          </div>
+
+          <div style="max-width: 480px; text-align:center; padding: 22px 18px;">
+            <div class="img-ph" style="width:69px;height:69px;margin: 0 auto 14px;">
+              <img src="image/Frame_1_314.png" alt="">
+            </div>
+            <div class="muted-small">
+              Вставьте файл любого формата <b>STL, OBJ, AMF, 3MF, FBX</b>, размер не более 100 МБ.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dash-panel print-right" aria-label="Настройки производства">
+        <div class="config-title">Настройки производства</div>
+
+        <form action="#" method="post" class="config-row">
+          <label class="field">
+            <span class="label">Выберите материал:</span>
+            <select class="select" name="material">
+              <option value="tr">ТРР</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="label">Выберите технологию:</span>
+            <select class="select" name="tech">
+              <option value="tech1">Технология</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="label">Выберите цвет:</span>
+            <select class="select" name="color">
+              <option value="green">Зелёный</option>
+            </select>
+          </label>
+
+          <div class="two-cols">
+            <label class="field">
+              <span class="label">Количество:</span>
+              <input class="input" type="number" name="qty" value="10" min="1" />
+            </label>
+            <label class="field">
+              <span class="label">Толщина:</span>
+              <select class="select" name="thickness">
+                <option value="0.2">0,2мм</option>
+                <option value="0.3">0,3мм</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="price-line">
+            <span>Предварительная цена:</span>
+            <span class="sum">6000 ₽</span>
+          </div>
+
+          <div class="print-actions">
+            <a href="checkout.html" class="btn btn-primary">Перейти к оплате</a>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div>
+        <div class="site-footer__brand">3D Print</div>
+        <div class="site-footer__text">
+          Изготавливаем 3D модели и печатаем по вашим файлам. Плейсхолдер текста — подставишь
+          описание и контакты.
+        </div>
+      </div>
+
+      <div class="site-footer__right">
+        <div class="site-footer__contacts">+7 (000) 000-00-00</div>
+        <div class="site-footer__copy">© 2026 3D Print. Все права защищены.</div>
+      </div>
+    </div>
+  </footer>
+  <script src="delet_landing_page.js"></script>
+  <script src="scripts/print-service.js"></script>
+</body>
+</html>

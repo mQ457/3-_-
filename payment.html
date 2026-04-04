@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D печать</title>
+    <link rel="icon" type="image/png" href="image/3D print(1).png">
+    <link rel="stylesheet" href="./site.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="app-shell">
+        <input type="checkbox" id="nav-toggle" style="position:absolute;left:-9999px;" />
+        <label class="app-burger" for="nav-toggle" aria-label="Открыть меню">☰</label>
+
+        <aside class="sidebar" aria-label="Меню">
+          <div class="side-brand">3D print</div>
+          <nav class="nav">
+            <a class="nav-item" href="profile.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_770.png" alt="setting"></span>
+              Профиль
+            </a>
+            <a class="nav-item" href="orders.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_716.png" alt="setting"></span>
+              Мои заказы
+            </a>
+            <a class="nav-item" href="delivery-address.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_727.png" alt="setting"></span>
+              Адрес доставки
+            </a>
+            <a class="nav-item is-active" href="payment.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_1080.png" alt="setting"></span>
+              Оплата
+            </a>
+          </nav>
+
+          <div class="side-bottom">
+            <div class="side-user">
+              <div>
+                <div class="name">Александр А.</div>
+                <div class="role">клиент</div>
+              </div>
+              <div class="avatar" aria-hidden="true"></div>
+            </div>
+            <div class="side-exit" role="button" tabindex="0" aria-label="Выход">
+              <span class="exit-ic" aria-hidden="true"></span>
+              Выход
+            </div>
+          </div>
+        </aside>
+
+        <div class="app-content">
+          <div class="app-top">
+            <div>
+              <h1 class="app-title">Оплата заказов</h1>
+              <p class="app-sub">Выберите или привяжите карту</p>
+            </div>
+            <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+          </div>
+
+          <div class="pay-grid">
+            <section class="card pay-top">
+              <div class="pay-cards" aria-label="Карты">
+                <div class="bank-card is-active">
+                  <div class="brand">
+                    <span aria-hidden="true">💳</span>
+                    <span class="hint">01/33</span>
+                  </div>
+                  <div class="num">•••• 9911</div>
+                  <div class="hint">ALEXANDER IVANOV</div>
+                </div>
+
+                <div class="bank-card">
+                  <div class="brand">
+                    <span aria-hidden="true">💳</span>
+                    <span class="trash" aria-hidden="true"></span>
+                  </div>
+                  <div class="num">•••• 9911</div>
+                  <div class="hint">01/33</div>
+                </div>
+
+                <div class="bank-card new-card">
+                  +<br />
+                  Привязать новую карту
+                </div>
+              </div>
+            </section>
+
+            <section class="card pay-list">
+              <div class="pay-list-top">
+                <div>Ожидают оплаты</div>
+                <a href="#" class="muted-small" style="font-weight:1000;text-decoration:none; color:var(--accent2);">Все заказы &gt;</a>
+              </div>
+
+              <div class="pay-item">
+                <div class="pay-item-row">
+                  <div class="left">
+                    <div class="ico" aria-hidden="true"></div>
+                    <div class="meta">
+                      Заказ #A-002
+                      <span class="sub">Сканирование</span>
+                    </div>
+                  </div>
+                  <div class="right">
+                    <div class="sum">2500руб.</div>
+                    <a class="link" href="#" role="button">Оплатить сейчас</a>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+

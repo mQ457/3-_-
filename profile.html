@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D печать</title>
+    <link rel="stylesheet" href="./site.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="app-shell">
+        <input type="checkbox" id="nav-toggle" style="position:absolute;left:-9999px;" />
+        <label class="app-burger" for="nav-toggle" aria-label="Открыть меню">☰</label>
+
+        <aside class="sidebar" aria-label="Меню">
+          <div class="side-brand">3D print</div>
+          <nav class="nav">
+            <a class="nav-item is-active" href="profile.html"><span class="nav-ic"></span>Профиль</a>
+            <a class="nav-item" href="orders.html"><span class="nav-ic"></span>Мои заказы</a>
+            <a class="nav-item" href="delivery-address.html"><span class="nav-ic"></span>Адрес доставки</a>
+            <a class="nav-item" href="payment.html"><span class="nav-ic"></span>Оплата</a>
+          </nav>
+
+          <div class="side-bottom">
+            <div class="side-user">
+              <div>
+                <div class="name" id="sidebar-name">Пользователь</div>
+                <div class="role">клиент</div>
+              </div>
+              <div class="avatar" aria-hidden="true"></div>
+            </div>
+            <button id="logout-btn" class="side-exit" type="button" style="background:none;border:none;">
+              <span class="exit-ic" aria-hidden="true"></span>
+              Выход
+            </button>
+          </div>
+        </aside>
+
+        <div class="app-content">
+          <div class="app-top">
+            <div>
+              <h1 class="app-title">Настройки профиля</h1>
+              <p class="app-sub">Управляйте личной информацией своего аккаунта</p>
+            </div>
+            <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+          </div>
+
+          <div class="profile-grid">
+            <section class="card profile-card">
+              <div class="topline">
+                <span class="icon" aria-hidden="true"></span>
+                <h3 style="margin:0;">Личные данные</h3>
+              </div>
+
+              <form id="profile-form">
+                <div class="profile-form" style="grid-template-columns:1fr;">
+                  <label class="field" style="gap:6px;">
+                    <span class="label" style="font-size:12px; margin:0;">ФИО</span>
+                    <input class="input" type="text" name="fullName" placeholder="Введите ФИО" />
+                  </label>
+                </div>
+
+                <div class="two-cols">
+                  <label class="field" style="gap:6px;">
+                    <span class="label" style="font-size:12px; margin:0;">Номер телефона</span>
+                    <input class="input" type="tel" name="phone" readonly />
+                  </label>
+                  <label class="field" style="gap:6px;">
+                    <span class="label" style="font-size:12px; margin:0;">Почта</span>
+                    <input class="input" type="email" name="email" placeholder="name@email.com" />
+                  </label>
+                </div>
+
+                <div class="profile-actions" style="margin-top: 14px;">
+                  <button class="btn btn-primary" type="submit" style="padding:10px 18px;">Сохранить данные</button>
+                </div>
+                <div id="profile-status" class="muted-small" style="margin-top:10px;" aria-live="polite"></div>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./scripts/profile.js"></script>
+  </body>
+</html>

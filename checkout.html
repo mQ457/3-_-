@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D печать</title>
+    <link rel="icon" type="image/png" href="image/3D print(1).png">
+    <link rel="stylesheet" href="./site.css" />
+  </head>
+  <body>
+    <div class="checkout-wrap">
+      <section class="card checkout-card" aria-label="Оформление заказа">
+        <div class="checkout-head">
+          <div class="breadcrumb"><span class="arrow"><img src="image/Frame_1_450.png" alt="arrow" style="width: 19px; height: 19px;"></span><a href="landing.html">Главная</a></div>
+          <h1>Оформление заказа</h1>
+        </div>
+
+        <div class="summary" aria-label="Сумма заказа">
+          <div class="summary-row">
+            <span>Услуга:</span>
+            <span>5500</span>
+          </div>
+          <div class="summary-row">
+            <span>Доставка:</span>
+            <span>500</span>
+          </div>
+          <div class="summary-row" style="color:rgba(234,77,58,.95);">
+            <span>Итого к оплате:</span>
+            <span class="sum">6000 ₽</span>
+          </div>
+        </div>
+
+        <form action="#" method="post" class="card-form-grid">
+          <label class="field">
+            <span class="label">Номер карты</span>
+            <input class="input" type="text" name="card" placeholder="0000 0000 0000 0000" />
+          </label>
+
+          <div class="inline-2">
+            <label class="field">
+              <span class="label">Срок</span>
+              <input class="input" type="text" name="exp" placeholder="MM/ГГ" />
+            </label>
+            <label class="field">
+              <span class="label">СVC</span>
+              <input class="input" type="text" name="cvc" placeholder="•••" />
+            </label>
+          </div>
+
+          <div class="checkout-actions">
+            <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center;">Оплатить</button>
+          </div>
+        </form>
+      </section>
+    </div>
+    <script src="delet_landing_page.js"></script>
+    <script src="scripts/checkout.js"></script>
+  </body>
+</html>
+

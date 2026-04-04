@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D печать</title>
+  <link rel="icon" type="image/png" href="image/3D print(1).png">
+  <link rel="stylesheet" href="./site.css" />
+      <style>
+        /* Переопределяем только для этой страницы */
+        body.hide-scrollbar {
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        body.hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="hide-scrollbar">
+  <div id="overflow-container">
+    <div class="container">
+      <div class="app-shell">
+        <input type="checkbox" id="nav-toggle" style="position:absolute;left:-9999px;" />
+        <label class="app-burger" for="nav-toggle" aria-label="Открыть меню">☰</label>
+
+        <aside class="sidebar" aria-label="Меню">
+          <div class="side-brand">3D print</div>
+
+          <nav class="nav">
+            <a class="nav-item" href="profile.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_770.png" alt="setting"></span>
+              Профиль
+            </a>
+            <a class="nav-item" href="orders.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_716.png" alt="setting"></span>
+              Мои заказы
+            </a>
+            <a class="nav-item is-active" href="delivery-address.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_989.png" alt="setting"></span>
+              Адрес доставки
+            </a>
+            <a class="nav-item" href="payment.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_794.png" alt="setting"></span>
+              Оплата
+            </a>
+          </nav>
+
+          <div class="side-bottom">
+            <div class="side-user">
+              <div>
+                <div class="name">Александр А.</div>
+                <div class="role">клиент</div>
+              </div>
+              <div class="avatar" aria-hidden="true"></div>
+            </div>
+            <div class="side-exit" role="button" tabindex="0" aria-label="Выход">
+              <span class="exit-ic" aria-hidden="true"></span>
+              Выход
+            </div>
+          </div>
+        </aside>
+
+        <div class="app-content">
+          <div class="app-top">
+            <div>
+              <h1 class="app-title">Адрес доставки</h1>
+              <p class="app-sub">Выберите пункт доставки, в который мы доставим готовое изделие</p>
+            </div>
+            <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+          </div>
+
+          <div class="addr-grid">
+            <section class="card search-box">
+              <div class="label" style="margin:0 0 10px;">Поиск пункта выдачи</div>
+              <div class="search-row">
+                <input class="input" type="text" name="city" value="Москва" />
+                <button class="btn btn-primary" type="button">Найти</button>
+              </div>
+            </section>
+
+            <section class="card map-card">
+              <div class="label" style="margin:0;">Карта пунктов доставки</div>
+              <div class="muted-small" style="margin-top:6px;">Выберите удобный пункт доставки на карте</div>
+              <div class="map-placeholder" style="margin-top:14px;">Карта</div>
+              <div class="save-row">
+                <button class="btn btn-primary" type="button"
+                  style="padding:8px 14px;border-radius:10px;">Сохранить</button>
+              </div>
+            </section>
+
+            <section class="card saved-row">
+              <div class="label" style="margin:0 0 4px;">Сохраненные адреса</div>
+              <div class="saved-chips">
+                <div class="chip is-active">
+                  Почта России
+                  <span class="small">г.Москва ул.Пушкина 12А</span>
+                </div>
+                <div class="chip">
+                  Яндекс маркет
+                  <span class="small">г.Москва ул.Пушкина 12А</span>
+                </div>
+                <div class="chip">
+                  СДЕК
+                  <span class="small">г.Москва ул.Пушкина 12А</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="delet_landing_page.js"></script>
+</body>
+</html>

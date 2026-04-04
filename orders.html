@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D печать</title>
+    <link rel="icon" type="image/png" href="image/3D print(1).png">
+    <link rel="stylesheet" href="./site.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="app-shell">
+        <input type="checkbox" id="nav-toggle" style="position:absolute;left:-9999px;" />
+        <label class="app-burger" for="nav-toggle" aria-label="Открыть меню">☰</label>
+
+        <aside class="sidebar" aria-label="Меню">
+          <div class="side-brand">3D print</div>
+          <nav class="nav">
+            <a class="nav-item" href="profile.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_770.png" alt="setting"></span>
+              Профиль
+            </a>
+            <a class="nav-item is-active" href="orders.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_776.png" alt="setting"></span>
+              Мои заказы
+            </a>
+            <a class="nav-item" href="delivery-address.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_727.png" alt="setting"></span>
+              Адрес доставки
+            </a>
+            <a class="nav-item" href="payment.html">
+              <span class="nav-ic" aria-hidden="true"><img src="image/Frame_1_794.png" alt="setting"></span>
+              Оплата
+            </a>
+          </nav>
+
+          <div class="side-bottom">
+            <div class="side-user">
+              <div>
+                <div class="name">Александр А.</div>
+                <div class="role">клиент</div>
+              </div>
+              <div class="avatar" aria-hidden="true"></div>
+            </div>
+            <div class="side-exit" role="button" tabindex="0" aria-label="Выход">
+              <span class="exit-ic" aria-hidden="true"></span>
+              Выход
+            </div>
+          </div>
+        </aside>
+
+        <div class="app-content">
+          <div class="app-top">
+            <div>
+              <h1 class="app-title">Мои заказы</h1>
+              <p class="app-sub">Проверьте свои данные и новые заказы</p>
+            </div>
+            <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+          </div>
+
+          <section class="card orders-card">
+            <div class="orders-head">
+              <h2>Мои заказы</h2>
+              <p>Проверяйте статус и детали заказа</p>
+            </div>
+
+            <table class="orders-table" aria-label="Таблица заказов">
+              <thead>
+                <tr>
+                  <th style="width:90px;">Номер</th>
+                  <th>Услуга</th>
+                  <th style="width:140px;">Файл</th>
+                  <th style="width:170px;">Статус</th>
+                  <th style="width:110px;">Дата</th>
+                  <th style="width:120px;">Сумма</th>
+                  <th style="width:46px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>#A-A-001</td>
+                  <td>3D-печать</td>
+                  <td>digital_v2.stl</td>
+                  <td>
+                    <span class="status-badge ok">Завершен</span>
+                  </td>
+                  <td>20.01.2026</td>
+                  <td>2500руб.</td>
+                  <td>
+                    <button class="btn btn-ghost" style="padding:6px 10px; border-radius:12px;" type="button" aria-label="Развернуть" disabled>⌄</button>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>#A-A-002</td>
+                  <td>Сканирование</td>
+                  <td>digital_v2.mp4</td>
+                  <td>
+                    <span class="status-badge wait">Ожидание посылки</span>
+                  </td>
+                  <td>20.01.2026</td>
+                  <td>2500руб.</td>
+                  <td>
+                    <button class="btn btn-ghost" style="padding:6px 10px; border-radius:12px;" type="button" aria-label="Развернуть">⌄</button>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>#A-A-003</td>
+                  <td>Моделирование</td>
+                  <td>digital_v2.stl</td>
+                  <td>
+                    <span class="status-badge ok" style="background:rgba(16,185,129,.14);">ТЗ утверждено</span>
+                  </td>
+                  <td>20.01.2026</td>
+                  <td>2500руб.</td>
+                  <td>
+                    <button class="btn btn-ghost" style="padding:6px 10px; border-radius:12px;" type="button" aria-label="Развернуть">⌄</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </div>
+    </div>
+<script src="delet_landing_page.js"></script>
+    <script src="scripts/orders.js"></script>
+</html>
+

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Настройки — ADMIN CORE</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="admin-root">
+    <aside class="admin-sidebar">
+      <div class="admin-brand">ADMIN CORE</div>
+      <nav class="admin-nav">
+        <button class="nav-button" onclick="window.location.href='admin.html'">Главная</button>
+        <button class="nav-button" onclick="window.location.href='admin-orders.html'">Заказы</button>
+        <button class="nav-button" onclick="window.location.href='admin-clients.html'">Клиенты</button>
+        <button class="nav-button" onclick="window.location.href='admin-support.html'">Поддержка</button>
+        <button class="nav-button" onclick="window.location.href='admin-warehouse.html'">Склад</button>
+        <button class="nav-button active">Настройки UI</button>
+      </nav>
+      <div class="admin-status-card">
+        <div class="server-status-title">СТАТУС СЕРВЕРА</div>
+        <div class="server-status-line">
+          <span class="status-dot online"></span>
+          <span class="status-label">ONLINE</span>
+        </div>
+      </div>
+      <button class="nav-button logout-btn" onclick="adminLogout()">Выйти</button>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div class="admin-search">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" placeholder="Поиск настроек..." aria-label="Поиск" />
+        </div>
+        <div class="admin-usercard">
+          <div class="user-avatar">А</div>
+          <div class="user-info">
+            <strong id="admin-name">Иван Админов</strong>
+            <span>SUPER ADMIN</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="admin-screen">
+        <div class="settings-page-header">
+          <h1>Настройки клиентской части</h1>
+          <p>Управление технологиями печати, материалами и визуальными настройками</p>
+        </div>
+
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-tab="technologies">Технологии печати</button>
+          <button class="settings-tab" data-tab="materials">Доступные материалы</button>
+        </div>
+
+        <div id="technologies-tab" class="settings-tab-content active">
+          <div class="settings-section">
+            <h2>Технологии печати</h2>
+            <p class="section-description">Здесь вы можете управлять тем, какие технологии видят клиенты при оформлении заказа</p>
+            <button id="add-technology-btn" class="btn-primary">+ Добавить технологию</button>
+          </div>
+          <div class="technologies-list" id="technologies-settings">
+            <div class="empty-state">Загрузка технологий...</div>
+          </div>
+        </div>
+
+        <div id="materials-tab" class="settings-tab-content hidden">
+          <div class="settings-section">
+            <h2>Доступные материалы</h2>
+            <p class="section-description">Материалы, которые доступны для печати. Укажите цены и наличие</p>
+            <button id="add-material-btn" class="btn-primary">+ Добавить материал</button>
+          </div>
+          <div class="materials-list" id="materials-settings">
+            <div class="empty-state">Загрузка материалов...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="scripts/admin-settings.js" defer></script>
+</body>
+</html>

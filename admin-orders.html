@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Заказы — ADMIN CORE</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="admin-root">
+    <aside class="admin-sidebar">
+      <div class="admin-brand">ADMIN CORE</div>
+      <nav class="admin-nav">
+        <button class="nav-button" onclick="window.location.href='admin.html'">Главная</button>
+        <button class="nav-button active">Заказы</button>
+        <button class="nav-button" onclick="window.location.href='admin-clients.html'">Клиенты</button>
+        <button class="nav-button" onclick="window.location.href='admin-support.html'">Поддержка</button>
+        <button class="nav-button" onclick="window.location.href='admin-warehouse.html'">Склад</button>
+        <button class="nav-button" onclick="window.location.href='admin-settings.html'">Настройки UI</button>
+      </nav>
+      <div class="admin-status-card">
+        <div class="server-status-title">СТАТУС СЕРВЕРА</div>
+        <div class="server-status-line">
+          <span class="status-dot online"></span>
+          <span class="status-label">ONLINE</span>
+        </div>
+      </div>
+      <button class="nav-button logout-btn" onclick="adminLogout()">Выйти</button>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div class="admin-search">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" placeholder="Поиск по номеру заказа, клиентам..." aria-label="Поиск" />
+        </div>
+        <div class="admin-usercard">
+          <div class="user-avatar">А</div>
+          <div class="user-info">
+            <strong id="admin-name">Иван Админов</strong>
+            <span>SUPER ADMIN</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="admin-screen">
+        <div class="orders-page-header">
+          <h1>Управление заказами</h1>
+          <p>Все заказы из системы 3D печати в одном месте</p>
+          <div class="orders-page-actions">
+            <button id="refresh-orders-btn" class="btn-secondary">Обновить</button>
+            <button id="export-orders-btn" class="btn-secondary">Экспорт CSV</button>
+            <button id="new-order-btn" class="btn-primary">+ Новый заказ</button>
+          </div>
+        </div>
+
+        <div class="orders-filters">
+          <input type="text" id="filter-id" placeholder="Фильтр по ID заказа" class="filter-input" />
+          <select id="filter-status" class="filter-select">
+            <option value="">Все статусы</option>
+            <option value="Оплачен">Оплачен</option>
+            <option value="Печать">Печать</option>
+            <option value="Доставка">Доставка</option>
+            <option value="Завершен">Завершен</option>
+          </select>
+          <input type="date" id="filter-date" class="filter-input" />
+        </div>
+
+        <div id="orders-container" class="orders-table-container">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Клиент</th>
+                <th>Номер</th>
+                <th>Услуга</th>
+                <th>Статус</th>
+                <th>Сумма</th>
+                <th>Дата</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body">
+              <tr>
+                <td colspan="8" class="empty-state">Загрузка заказов...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="scripts/admin-orders.js" defer></script>
+</body>
+</html>

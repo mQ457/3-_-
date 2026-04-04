@@ -1,0 +1,11 @@
+# Node dependencies
+server/node_modules/
+
+# Environment files
+server/.env
+
+# SQLite database file
+server/data/
+
+# Logs
+*.log

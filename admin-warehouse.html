@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Склад — ADMIN CORE</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="admin-root">
+    <aside class="admin-sidebar">
+      <div class="admin-brand">ADMIN CORE</div>
+      <nav class="admin-nav">
+        <button class="nav-button" onclick="window.location.href='admin.html'">Главная</button>
+        <button class="nav-button" onclick="window.location.href='admin-orders.html'">Заказы</button>
+        <button class="nav-button" onclick="window.location.href='admin-clients.html'">Клиенты</button>
+        <button class="nav-button" onclick="window.location.href='admin-support.html'">Поддержка</button>
+        <button class="nav-button active">Склад</button>
+        <button class="nav-button" onclick="window.location.href='admin-settings.html'">Настройки UI</button>
+      </nav>
+      <div class="admin-status-card">
+        <div class="server-status-title">СТАТУС СЕРВЕРА</div>
+        <div class="server-status-line">
+          <span class="status-dot online"></span>
+          <span class="status-label">ONLINE</span>
+        </div>
+      </div>
+      <button class="nav-button logout-btn" onclick="adminLogout()">Выйти</button>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div class="admin-search">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" placeholder="Поиск материалов..." aria-label="Поиск" />
+        </div>
+        <div class="admin-usercard">
+          <div class="user-avatar">А</div>
+          <div class="user-info">
+            <strong id="admin-name">Иван Админов</strong>
+            <span>SUPER ADMIN</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="admin-screen">
+        <div class="warehouse-page-header">
+          <h1>Управление складом</h1>
+          <p>Материалы, технологии печати и состояние запасов</p>
+          <div class="warehouse-page-actions">
+            <button id="refresh-warehouse-btn" class="btn-secondary">Обновить</button>
+            <button id="new-material-btn" class="btn-primary">+ Добавить материал</button>
+          </div>
+        </div>
+
+        <div class="warehouse-tabs">
+          <button class="warehouse-tab active" data-tab="materials">Материалы</button>
+          <button class="warehouse-tab" data-tab="technologies">Технологии печати</button>
+        </div>
+
+        <div id="materials-tab" class="warehouse-tab-content active">
+          <div class="materials-grid" id="materials-container">
+            <div class="empty-state">Загрузка материалов...</div>
+          </div>
+        </div>
+
+        <div id="technologies-tab" class="warehouse-tab-content hidden">
+          <div class="technologies-list" id="technologies-container">
+            <div class="empty-state">Загрузка технологий...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="scripts/admin-warehouse.js" defer></script>
+</body>
+</html>

@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="./site.css" />
   </head>
   <body class="landing-page">
-    <header class="landing-header">
+    <header class="landing-header" id="landing-header">
       <div class="container landing-header__inner">
-        <div class="landing-brand">3D Print</div>
+        <div class="landing-brand">3D Печать</div>
 
         <div class="landing-header__actions">
           <a class="btn btn-ghost landing-header__btn" href="print-step-3.html" role="button">Заказать</a>
@@ -25,16 +25,16 @@
       <div class="container landing-hero__inner">
         <div class="landing-hero__left">
           <div class="landing-hero__title">
-            <div>Профессиональные</div>
-            <div>услуги</div>
-            <div class="landing-hero__title-accent">3D ПЕЧАТИ</div>
+            <div class="landing-anim-line">Профессиональные</div>
+            <div class="landing-anim-line">услуги</div>
+            <div class="landing-hero__title-accent landing-anim-line">3D ПЕЧАТИ</div>
           </div>
 
-          <div class="landing-hero__subtitle">
-            3D Печать и 3D-технологии XXII века
+          <div class="landing-hero__subtitle landing-fade-up landing-fade-up--delay-3">
+            3D Печать и 3D-технологии XXI века
           </div>
 
-          <div class="landing-hero__cta">
+          <div class="landing-hero__cta landing-fade-up landing-fade-up--delay-4">
             <a class="btn landing-btn-small landing-btn-small--ghost" href="profile.html" role="button">Консультация</a>
             <a class="btn landing-btn-small landing-btn-small--red" href="print-step-3.html" role="button">Заказать</a>
           </div>
@@ -48,15 +48,17 @@
 
     <section class="landing-services" aria-label="Ключевые услуги">
       <div class="container">
-        <div class="landing-services__center-text">
-          <div class="landing-services__center-title">Нажми кнопку</div>
+        <div class="landing-services__center-text landing-reveal">
+          <h2 class="landing-portfolio__title">
+            Нажми <span class="landing-portfolio__title-accent">кнопку</span>
+          </h2>
           <div class="landing-services__center-sub">
             Мы превращаем ваши идеи в реальность, создавая точный, аккуратный объект.
           </div>
         </div>
 
         <div class="landing-service-cards">
-          <article class="landing-card">
+          <article class="landing-card landing-reveal">
             <div class="landing-card__title">Моделирование</div>
             <div class="landing-card__img-slot img-ph landing-card__img" role="img" aria-label="Иллюстрация моделирования">
               <img src="image/Rectangle_1_143.png" alt="Моделирование 3D" style="width:85%; height:100%; background-size: contain;" />
@@ -66,8 +68,7 @@
               <a class="btn btn-ghost landing-card__btn" href="print-step-2.html" role="button">Подробнее</a>
             </div>
           </article>
-
-          <article class="landing-card">
+          <article class="landing-card landing-reveal">
             <div class="landing-card__title landing-card__title--accent">3D печать</div>
             <div class="landing-card__img-slot img-ph landing-card__img" role="img" aria-label="Иллюстрация 3D печати">
               <img src="image/Rectangle_1_129.png" alt="3D печать" style="width:85%; height:100%; background-size: contain;" />
@@ -77,8 +78,7 @@
               <a class="btn btn-ghost landing-card__btn landing-card__btn--accent" href="print-step-3.html" role="button">Подробнее</a>
             </div>
           </article>
-
-          <article class="landing-card">
+          <article class="landing-card landing-reveal">
             <div class="landing-card__title">Сканирование</div>
             <div class="landing-card__img-slot img-ph landing-card__img" role="img" aria-label="Иллюстрация сканирования">
               <img src="image/Rectangle_1_144.png" alt="Сканирование" style="width:85%; height:100%; background-size: contain;"/>
@@ -92,9 +92,78 @@
       </div>
     </section>
 
+    <section class="landing-portfolio" aria-label="Наши работы">
+      <div class="container">
+        <div class="landing-portfolio__head landing-reveal">
+          <h2 class="landing-portfolio__title">
+            Наши <span class="landing-portfolio__title-accent">работы</span>
+          </h2>
+          <p class="landing-portfolio__sub">
+            Подборка выполненных заказов: от прототипов до мелкосерий.
+          </p>
+        </div>
+        <ul class="landing-portfolio__grid" role="list">
+          <li class="landing-portfolio__item landing-portfolio__item--featured landing-reveal">
+            <figure class="landing-portfolio__figure">
+              <img src="image/Rectangle_1_129.png" alt="Корпус, FDM-печать" loading="lazy" width="800" height="600" />
+              <figcaption class="landing-portfolio__caption">
+                <span class="landing-portfolio__cap-title">Корпус устройства</span>
+                <span class="landing-portfolio__cap-meta">FDM · PLA</span>
+              </figcaption>
+            </figure>
+          </li>
+          <li class="landing-portfolio__item landing-reveal">
+            <figure class="landing-portfolio__figure">
+              <img src="image/Rectangle_1_143.png" alt="Инженерный прототип" loading="lazy" width="600" height="600" />
+              <figcaption class="landing-portfolio__caption">
+                <span class="landing-portfolio__cap-title">Прототип</span>
+                <span class="landing-portfolio__cap-meta">Моделирование</span>
+              </figcaption>
+            </figure>
+          </li>
+          <li class="landing-portfolio__item landing-reveal">
+            <figure class="landing-portfolio__figure">
+              <img src="image/Rectangle_1_144.png" alt="Результат сканирования" loading="lazy" width="600" height="600" />
+              <figcaption class="landing-portfolio__caption">
+                <span class="landing-portfolio__cap-title">Оцифровка</span>
+                <span class="landing-portfolio__cap-meta">3D-скан</span>
+              </figcaption>
+            </figure>
+          </li>
+          <li class="landing-portfolio__item landing-reveal">
+            <figure class="landing-portfolio__figure">
+              <img src="image/Rectangle_1_129.png" alt="Функциональная деталь" loading="lazy" width="600" height="450" />
+              <figcaption class="landing-portfolio__caption">
+                <span class="landing-portfolio__cap-title">Функциональная деталь</span>
+                <span class="landing-portfolio__cap-meta">Точная посадка</span>
+              </figcaption>
+            </figure>
+          </li>
+          <li class="landing-portfolio__item landing-portfolio__item--wide landing-reveal">
+            <figure class="landing-portfolio__figure">
+              <img src="image/Rectangle_1_143.png" alt="Декоративная модель" loading="lazy" width="900" height="400" />
+              <figcaption class="landing-portfolio__caption">
+                <span class="landing-portfolio__cap-title">Декоративная модель</span>
+                <span class="landing-portfolio__cap-meta">Финишная обработка</span>
+              </figcaption>
+            </figure>
+          </li>
+          <li class="landing-portfolio__item landing-reveal">
+            <figure class="landing-portfolio__figure">
+              <img src="image/Rectangle_1_144.png" alt="Мелкая серия" loading="lazy" width="600" height="600" />
+              <figcaption class="landing-portfolio__caption">
+                <span class="landing-portfolio__cap-title">Партия изделий</span>
+                <span class="landing-portfolio__cap-meta">Повторяемость</span>
+              </figcaption>
+            </figure>
+          </li>
+        </ul>
+      </div>
+    </section>
+
     <section class="landing-dashed" aria-label="Описание услуг">
       <div class="container landing-dashed__inner">
-        <di class="landing-dashed__item">
+        <div class="landing-dashed__item landing-reveal">
           <div class="landing-dashed__img-slot" role="img" aria-label="Иллюстрация 3D печати">
             <img src="image/box.svg" alt="3Д-печать" style="width:100%; height:100%; background-size: contain;"/>
           </div>
@@ -112,9 +181,9 @@
           <div class="landing-dashed__cta">
             <a class="btn landing-btn-dashed" href="print-step-3.html" role="button">Заказать</a>
           </div>
-        </di  v>
+        </div>
 
-        <div class="landing-dashed__item">
+        <div class="landing-dashed__item landing-reveal">
           <div class="landing-dashed__img-slot" role="img" aria-label="Иллюстрация 3D моделирования">
             <img src="image/file-box.svg" alt="3Д-печать" style="width:100%; height:100%; background-size: contain;"/>
           </div>
@@ -134,7 +203,7 @@
           </div>
         </div>
 
-        <div class="landing-dashed__item landing-dashed__item--last">
+        <div class="landing-dashed__item landing-dashed__item--last landing-reveal">
           <div class="landing-dashed__img-slot" role="img" aria-label="Иллюстрация 3D сканирования">
             <img src="image/scan-barcode.svg" alt="3Д-печать" style="width:100%; height:100%; background-size: contain;"/>
           </div>
@@ -158,57 +227,29 @@
 
     <section class="landing-testimonials" aria-label="Отзывы клиентов">
       <div class="container landing-testimonials__wrap">
-        <div class="landing-testimonials__head">
+        <div class="landing-testimonials__head landing-reveal">
           <div class="landing-testimonials__title">
             Что говорят <span class="landing-testimonials__title-accent">клиенты</span>
           </div>
           <div class="landing-testimonials__sub">
             Мы дорожим каждым клиентом и работаем на качество вашего результата.
           </div>
-          <div class="landing-testimonials__controls" aria-hidden="true">
-            <span class="landing-testimonials__dot">
+          <div class="landing-testimonials__controls" aria-label="Управление отзывами">
+            <button class="landing-testimonials__dot" type="button" id="reviews-prev-btn" aria-label="Предыдущие отзывы">
               <img src="image/Frame 48099683.png" alt="arrow">
-            </span>
-            <span class="landing-testimonials__dot">
+            </button>
+            <button class="landing-testimonials__dot" type="button" id="reviews-next-btn" aria-label="Следующие отзывы">
               <img src="image/Frame 48099684.png" alt="arrow">
-            </span>
+            </button>
           </div>
         </div>
 
         <div class="landing-testimonials__map">
           <div class="landing-testimonials__map-bg img-ph" role="img" aria-label="Фон-карта для отзывов">
           </div>
-
-          <article class="landing-review landing-review--a">
-            <div class="landing-review__text">
-              <b>Александр А.</b> — Ваш отзыв текстом, который вы потом замените на свой.
-            </div>
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-          </article>
-          <article class="landing-review landing-review--b">
-            <div class="landing-review__text">
-              <b>Александр А.</b> — Ваш отзыв текстом, который вы потом замените на свой.
-            </div>
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-          </article>
-          <article class="landing-review landing-review--c">
-            <div class="landing-review__text">
-              <b>Александр А.</b> — Ваш отзыв текстом, который вы потом замените на свой.
-            </div>
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-            <img class="star_onsiv" src="image/Frame_1_155.png" alt="star">
-          </article>
+          <div class="landing-testimonials__slider" id="reviews-slider">
+            <div class="landing-testimonials__track" id="reviews-track"></div>
+          </div>
 
           <div class="landing-review-form" role="form" aria-label="Оставить отзыв">
             <div class="landing-review-form__title">
@@ -216,20 +257,21 @@
             </div>
             <div class="landing-review-form__sub">Поделитесь впечатлениями — мы учтём пожелания.</div>
 
-            <div class="landing-stars" aria-hidden="true">
-              <img src="image/Frame_1_155.png" alt="star">
-              <img src="image/Frame_1_155.png" alt="star">
-              <img src="image/Frame_1_181.png" alt="star">
-              <img src="image/Frame_1_181.png" alt="star">
-              <img src="image/Frame_1_181.png" alt="star">
+            <div class="landing-stars" id="review-stars" aria-label="Оценка">
+              <button class="landing-stars__btn is-active" type="button" data-rating="1" aria-label="1 звезда"><img style="width: 19px; height: 19px;" src="image/Frame_1_157.png" alt="star"></button>
+              <button class="landing-stars__btn is-active" type="button" data-rating="2" aria-label="2 звезды"><img style="width: 19px; height: 19px;" src="image/Frame_1_157.png" alt="star"></button>
+              <button class="landing-stars__btn is-active" type="button" data-rating="3" aria-label="3 звезды"><img style="width: 19px; height: 19px;" src="image/Frame_1_157.png" alt="star"></button>
+              <button class="landing-stars__btn" type="button" data-rating="4" aria-label="4 звезды"><img style="width: 19px; height: 19px;" src="image/Frame_1_181.png" alt="star"></button>
+              <button class="landing-stars__btn" type="button" data-rating="5" aria-label="5 звезд"><img style="width: 19px; height: 19px;" src="image/Frame_1_181.png" alt="star"></button>
             </div>
 
             <label class="field landing-review-form__field">
               <span class="label" style="display:none;">Ваш отзыв</span>
-              <textarea class="textarea" name="review" placeholder="Напишите пару слов о вашем заказе..."></textarea>
+              <textarea class="textarea" id="review-text" name="review" maxlength="600" placeholder="Напишите пару слов о вашем заказе..."></textarea>
             </label>
 
-            <button class="btn btn-primary landing-review-form__btn" type="button">Опубликовать</button>
+            <button class="btn btn-primary landing-review-form__btn" type="button" id="review-submit-btn">Опубликовать</button>
+            <div id="review-status" class="muted-small" style="margin-top:8px;" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -252,21 +294,9 @@
         </div>
       </div>
     </footer>
-    <script>
-      document.getElementById('cabinet-link')?.addEventListener('click', async (event) => {
-        event.preventDefault();
-        try {
-          const response = await fetch('/api/profile/me', { method: 'GET', credentials: 'include' });
-          if (response.ok) {
-            window.location.href = 'profile.html';
-          } else {
-            window.location.href = 'login.html';
-          }
-        } catch (err) {
-          window.location.href = 'login.html';
-        }
-      });
-    </script>
+    <script src="scripts/app-bootstrap.js"></script>
+    <script src="scripts/landing-motion.js"></script>
+    <script src="scripts/landing-reviews.js"></script>
     <script src="delet_landing_page.js"></script>
   </body>
 </html>

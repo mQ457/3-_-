@@ -37,15 +37,14 @@
           <div class="side-bottom">
             <div class="side-user">
               <div>
-                <div class="name">Александр А.</div>
+                <div class="name"></div>
                 <div class="role">клиент</div>
               </div>
-              <div class="avatar" aria-hidden="true"></div>
             </div>
-            <div class="side-exit" role="button" tabindex="0" aria-label="Выход">
-              <span class="exit-ic" aria-hidden="true"></span>
+            <button id="logout-btn" class="side-exit" type="button" style="background:none;border:none;">
+              <span class="exit-ic" aria-hidden="true"><img src="image/Frame_1_965.png" alt="exit"></span>
               Выход
-            </div>
+            </button>
           </div>
         </aside>
 
@@ -55,7 +54,7 @@
               <h1 class="app-title">Мои заказы</h1>
               <p class="app-sub">Проверьте свои данные и новые заказы</p>
             </div>
-            <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+            <div class="breadcrumb"><span class="arrow-icon"><img class="" src="image/Frame_1_748.png" alt="exit"></span><a href="landing.html">Главная</a></div>
           </div>
 
           <section class="card orders-card">
@@ -77,47 +76,9 @@
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>#A-A-001</td>
-                  <td>3D-печать</td>
-                  <td>digital_v2.stl</td>
-                  <td>
-                    <span class="status-badge ok">Завершен</span>
-                  </td>
-                  <td>20.01.2026</td>
-                  <td>2500руб.</td>
-                  <td>
-                    <button class="btn btn-ghost" style="padding:6px 10px; border-radius:12px;" type="button" aria-label="Развернуть" disabled>⌄</button>
-                  </td>
-                </tr>
+                
 
-                <tr>
-                  <td>#A-A-002</td>
-                  <td>Сканирование</td>
-                  <td>digital_v2.mp4</td>
-                  <td>
-                    <span class="status-badge wait">Ожидание посылки</span>
-                  </td>
-                  <td>20.01.2026</td>
-                  <td>2500руб.</td>
-                  <td>
-                    <button class="btn btn-ghost" style="padding:6px 10px; border-radius:12px;" type="button" aria-label="Развернуть">⌄</button>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td>#A-A-003</td>
-                  <td>Моделирование</td>
-                  <td>digital_v2.stl</td>
-                  <td>
-                    <span class="status-badge ok" style="background:rgba(16,185,129,.14);">ТЗ утверждено</span>
-                  </td>
-                  <td>20.01.2026</td>
-                  <td>2500руб.</td>
-                  <td>
-                    <button class="btn btn-ghost" style="padding:6px 10px; border-radius:12px;" type="button" aria-label="Развернуть">⌄</button>
-                  </td>
-                </tr>
+                
               </tbody>
             </table>
           </section>
@@ -125,6 +86,8 @@
       </div>
     </div>
 <script src="delet_landing_page.js"></script>
+    <script src="scripts/app-bootstrap.js"></script>
+    <script src="scripts/order-notifications.js"></script>
     <script src="scripts/orders.js"></script>
 </html>
 

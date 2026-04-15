@@ -58,20 +58,47 @@
 
     <div class="print-grid">
       <section class="dash-panel print-left2">
-        <div class="panel-grey" style="position:relative; display:flex; align-items:center; justify-content:center;">
-          <div style="position:absolute; top: 10px; right: 14px; display:flex; align-items:center; gap:10px;">
-            <div class="img-ph" style="width:19px;height:19px; border: 0px;">
+        <div class="panel-grey panel-grey--model" data-model-panel>
+          <div class="model-panel__toolbar">
+            <div class="img-ph model-panel__toolbar-icon">
               <img src="image/Frame_1_326.png" alt="">
             </div>
-            <span class="muted-small" style="font-size:12px;">Название файла</span>
+            <button type="button" class="model-panel__file-name muted-small" id="model-file-name" aria-haspopup="dialog"
+              aria-expanded="false" aria-controls="model-replace-dialog">
+              Название файла
+            </button>
           </div>
 
-          <div style="max-width: 480px; text-align:center; padding: 22px 18px;">
-            <div class="img-ph" style="width:69px;height:69px;margin: 0 auto 14px;">
-              <img src="image/Frame_1_314.png" alt="">
-            </div>
-            <div class="muted-small">
+          <input type="file" id="model-file-input" class="model-file-input" accept=".stl,.obj,.amf,.3mf,.fbx"
+            aria-label="Выбор файла 3D-модели" />
+
+          <div id="model-upload-empty" class="model-upload-empty">
+            <button type="button" class="model-upload-trigger" id="model-upload-trigger" aria-label="Загрузить 3D-файл">
+              <span class="img-ph model-upload-trigger__icon">
+                <img src="image/Frame_1_314.png" alt="">
+              </span>
+            </button>
+            <div class="muted-small model-upload-hint">
               Вставьте файл любого формата <b>STL, OBJ, AMF, 3MF, FBX</b>, размер не более 100 МБ.
+            </div>
+          </div>
+
+          <div id="model-viewer-host" class="model-viewer-host" hidden>
+            <canvas id="model-preview-canvas"></canvas>
+          </div>
+
+          <div id="model-upload-status" class="model-upload-status muted-small" aria-live="polite"></div>
+        </div>
+
+        <div id="model-replace-dialog" class="model-replace-dialog" hidden role="dialog" aria-modal="true"
+          aria-labelledby="model-replace-title" aria-hidden="true">
+          <div class="model-replace-dialog__backdrop" tabindex="-1" aria-hidden="true"></div>
+          <div class="model-replace-dialog__card">
+            <p id="model-replace-title" class="model-replace-dialog__title">Хотите заменить файл?</p>
+            <div class="model-replace-dialog__actions">
+              <button type="button" class="btn btn-primary model-replace-dialog__btn model-replace-dialog__btn--yes"
+                id="model-replace-yes">Да</button>
+              <button type="button" class="btn model-replace-dialog__btn model-replace-dialog__btn--no" id="model-replace-no">Нет</button>
             </div>
           </div>
         </div>
@@ -145,6 +172,7 @@
       </div>
     </div>
   </footer>
+  <script src="scripts/landing-motion.js"></script>
   <script src="delet_landing_page.js"></script>
   <script src="scripts/print-service.js"></script>
 </body>

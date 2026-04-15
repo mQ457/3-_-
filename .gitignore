@@ -9,3 +9,8 @@ server/data/
 
 # Logs
 *.log
+
+# Runtime uploads and local cookies
+server/uploads/
+server/user_cookie.txt
+server/admin_cookie.txt

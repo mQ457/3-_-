@@ -51,15 +51,16 @@
           <div class="side-bottom">
             <div class="side-user">
               <div>
-                <div class="name">Александр А.</div>
+                <div class="name">
+          
+                </div>
                 <div class="role">клиент</div>
               </div>
-              <div class="avatar" aria-hidden="true"></div>
             </div>
-            <div class="side-exit" role="button" tabindex="0" aria-label="Выход">
-              <span class="exit-ic" aria-hidden="true"></span>
+            <button id="logout-btn" class="side-exit" type="button" style="background:none;border:none;">
+              <span class="exit-ic" aria-hidden="true"><img src="image/Frame_1_965.png" alt="exit"></span>
               Выход
-            </div>
+            </button>
           </div>
         </aside>
 
@@ -69,43 +70,38 @@
               <h1 class="app-title">Адрес доставки</h1>
               <p class="app-sub">Выберите пункт доставки, в который мы доставим готовое изделие</p>
             </div>
-            <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+            <div class="breadcrumb"><span class="arrow-icon"><img class="" src="image/Frame_1_748.png" alt="exit"></span><a href="landing.html">Главная</a></div>
           </div>
 
           <div class="addr-grid">
             <section class="card search-box">
               <div class="label" style="margin:0 0 10px;">Поиск пункта выдачи</div>
               <div class="search-row">
-                <input class="input" type="text" name="city" value="Москва" />
-                <button class="btn btn-primary" type="button">Найти</button>
+                <input class="input" type="text" name="city" value="Москва" id="address-city" />
+                <button class="btn btn-primary" type="button" id="address-search-btn">Найти</button>
               </div>
             </section>
 
             <section class="card map-card">
               <div class="label" style="margin:0;">Карта пунктов доставки</div>
               <div class="muted-small" style="margin-top:6px;">Выберите удобный пункт доставки на карте</div>
-              <div class="map-placeholder" style="margin-top:14px;">Карта</div>
+              <div class="map-placeholder delivery-map" id="delivery-map" style="margin-top:14px;">
+                <div class="delivery-map-fallback">Загрузка карты...</div>
+              </div>
+              <label class="field" style="margin-top:12px;">
+                <span class="label">Адрес</span>
+                <input class="input" id="address-line" type="text" placeholder="Введите адрес доставки" />
+              </label>
               <div class="save-row">
                 <button class="btn btn-primary" type="button"
-                  style="padding:8px 14px;border-radius:10px;">Сохранить</button>
+                  style="padding:8px 14px;border-radius:10px;" id="save-address-btn">Сохранить</button>
               </div>
+              <div id="address-status" class="muted-small" style="margin-top:8px;"></div>
             </section>
 
             <section class="card saved-row">
               <div class="label" style="margin:0 0 4px;">Сохраненные адреса</div>
-              <div class="saved-chips">
-                <div class="chip is-active">
-                  Почта России
-                  <span class="small">г.Москва ул.Пушкина 12А</span>
-                </div>
-                <div class="chip">
-                  Яндекс маркет
-                  <span class="small">г.Москва ул.Пушкина 12А</span>
-                </div>
-                <div class="chip">
-                  СДЕК
-                  <span class="small">г.Москва ул.Пушкина 12А</span>
-                </div>
+              <div class="saved-chips" id="saved-addresses">
               </div>
             </section>
           </div>
@@ -114,5 +110,9 @@
     </div>
   </div>
   <script src="delet_landing_page.js"></script>
+  <script src="scripts/app-bootstrap.js"></script>
+  <script src="scripts/order-notifications.js"></script>
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=61cf37c4-df8d-4a26-a335-bb193237e231&lang=ru_RU"></script>
+  <script src="scripts/delivery-address.js"></script>
 </body>
 </html>

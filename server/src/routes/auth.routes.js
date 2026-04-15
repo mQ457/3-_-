@@ -40,15 +40,26 @@ async function createSession(userId) {
   return { token, expiresAt };
 }
 
+async function clearUserSessions(userId) {
+  await db.query("DELETE FROM sessions WHERE user_id = $1", [userId]);
+}
+
 router.post("/register", async (req, res, next) => {
   try {
-    const { phone, password } = req.body || {};
+    const { phone, password, fullName, email } = req.body || {};
     const normalizedPhone = normalizePhone(phone);
+    const normalizedEmail = String(email || "").trim();
 
     if (!normalizedPhone || String(password || "").length < 6) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
         message: "Введите корректный телефон и пароль (минимум 6 символов).",
+      });
+    }
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Введите корректный email.",
       });
     }
 
@@ -61,11 +72,12 @@ router.post("/register", async (req, res, next) => {
     const passwordHash = await hashPassword(password);
 
     await db.query(
-      `INSERT INTO users (id, phone, password_hash)
-       VALUES ($1, $2, $3)`,
-      [userId, normalizedPhone, passwordHash]
+      `INSERT INTO users (id, phone, password_hash, full_name, email, role, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 'user', datetime('now'), datetime('now'))`,
+      [userId, normalizedPhone, passwordHash, String(fullName || "").trim() || null, normalizedEmail || null]
     );
 
+    await clearUserSessions(userId);
     const session = await createSession(userId);
     setSessionCookie(res, session.token, session.expiresAt);
 
@@ -74,8 +86,9 @@ router.post("/register", async (req, res, next) => {
       user: {
         id: userId,
         phone: normalizedPhone,
-        fullName: null,
-        email: null,
+        fullName: String(fullName || "").trim() || null,
+        email: normalizedEmail || null,
+        role: "user",
       },
     });
   } catch (error) {
@@ -93,7 +106,7 @@ router.post("/login", async (req, res, next) => {
     }
 
     const userRes = await db.query(
-      `SELECT id, phone, password_hash, full_name, email
+      `SELECT id, phone, password_hash, full_name, email, role
        FROM users
        WHERE phone = $1
        LIMIT 1`,
@@ -110,6 +123,7 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "INVALID_CREDENTIALS", message: "Неверный пароль." });
     }
 
+    await clearUserSessions(user.id);
     const session = await createSession(user.id);
     setSessionCookie(res, session.token, session.expiresAt);
 
@@ -120,6 +134,7 @@ router.post("/login", async (req, res, next) => {
         phone: user.phone,
         fullName: user.full_name,
         email: user.email,
+        role: user.role || "user",
       },
     });
   } catch (error) {
@@ -136,6 +151,19 @@ router.post("/logout", requireAuth, async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+router.get("/me", requireAuth, async (req, res) => {
+  res.json({
+    ok: true,
+    user: {
+      id: req.auth.userId,
+      phone: req.auth.phone,
+      fullName: req.auth.fullName || "",
+      email: req.auth.email || "",
+      role: req.auth.role || "user",
+    },
+  });
 });
 
 module.exports = router;

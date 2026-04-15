@@ -1,159 +1,75 @@
 (function () {
-  const API_BASE = "http://localhost:3000/api";
+  const API = window.AdminCommon;
+  const tbody = document.getElementById("settings-body");
+  const refreshBtn = document.getElementById("settings-refresh");
+  let options = [];
 
-  function adminLogout() {
-    localStorage.removeItem("isAdminLoggedIn");
-    window.location.href = "admin.html";
-  }
-
-  window.adminLogout = adminLogout;
-
-  async function loadTechnologiesSettings() {
-    const container = document.getElementById("technologies-settings");
-    if (!container) return;
-
-    container.innerHTML = '<div class="empty-state">Загрузка технологий...</div>';
-
-    try {
-      const response = await fetch(`${API_BASE}/admin/technologies`, {
-        credentials: "include",
-      });
-      if (response.status === 401) {
-        window.location.href = "admin.html";
-        return;
-      }
-      const data = await response.json();
-      const techs = data.technologies || [];
-
-      if (techs.length === 0) {
-        container.innerHTML = '<div class="empty-state">Нет технологий печати</div>';
-        return;
-      }
-
-      container.innerHTML = techs
-        .map(
-          (tech) => `
-        <div class="settings-item">
-          <div class="settings-item-header">
-            <h3>${tech.name || "Технология"}</h3>
-            <label class="toggle-switch">
-              <input type="checkbox" ${tech.active ? "checked" : ""} />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <p>${tech.description || ""}</p>
-          <div class="settings-item-details">
-            <div class="input-group">
-              <label>Минимальный размер</label>
-              <input type="text" value="${tech.minSize || ""}" />
-            </div>
-            <div class="input-group">
-              <label>Максимальный размер</label>
-              <input type="text" value="${tech.maxSize || ""}" />
-            </div>
-            <div class="input-group">
-              <label>Точность (мкм)</label>
-              <input type="number" value="${tech.precision || 0}" />
-            </div>
-          </div>
-          <div class="settings-item-actions">
-            <button class="btn-secondary">Сохранить</button>
-            <button class="btn-secondary">Отменить</button>
-          </div>
-        </div>
-      `
-        )
-        .join("");
-    } catch (error) {
-      container.innerHTML = `<div class="error-state">Ошибка загрузки: ${error.message}</div>`;
+  function render() {
+    if (!options.length) {
+      tbody.innerHTML = '<tr><td colspan="8">Нет данных</td></tr>';
+      return;
     }
-  }
+    tbody.innerHTML = options
+      .map(
+        (option) => `
+      <tr>
+        <td>${option.type}</td>
+        <td>${option.code}</td>
+        <td><input data-name="${option.id}" value="${option.name}" /></td>
+        <td><input data-price="${option.id}" type="number" value="${option.priceDelta || 0}" /></td>
+        <td><input data-meta="${option.id}" value='${option.meta ? JSON.stringify(option.meta).replace(/'/g, "&#39;") : ""}' /></td>
+        <td><input data-active="${option.id}" type="checkbox" ${option.active ? "checked" : ""} /></td>
+        <td><input data-sort="${option.id}" type="number" value="${option.sortOrder || 0}" /></td>
+        <td><button class="btn-secondary" data-save="${option.id}">Сохранить</button></td>
+      </tr>`
+      )
+      .join("");
 
-  async function loadMaterialsSettings() {
-    const container = document.getElementById("materials-settings");
-    if (!container) return;
-
-    container.innerHTML = '<div class="empty-state">Загрузка материалов...</div>';
-
-    try {
-      const response = await fetch(`${API_BASE}/admin/materials`, {
-        credentials: "include",
+    tbody.querySelectorAll("[data-save]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-save");
+        let meta = null;
+        const rawMeta = tbody.querySelector(`[data-meta="${id}"]`)?.value || "";
+        if (rawMeta.trim()) {
+          try {
+            meta = JSON.parse(rawMeta);
+          } catch {
+            alert("Некорректный JSON в meta.");
+            return;
+          }
+        }
+        await API.request(`/admin/options/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: tbody.querySelector(`[data-name="${id}"]`)?.value || "",
+            priceDelta: Number(tbody.querySelector(`[data-price="${id}"]`)?.value || 0),
+            active: tbody.querySelector(`[data-active="${id}"]`)?.checked,
+            sortOrder: Number(tbody.querySelector(`[data-sort="${id}"]`)?.value || 0),
+            meta,
+          }),
+        });
       });
-      if (response.status === 401) {
-        window.location.href = "admin.html";
-        return;
-      }
-      const data = await response.json();
-      const materials = data.materials || [];
-
-      if (materials.length === 0) {
-        container.innerHTML = '<div class="empty-state">Нет материалов</div>';
-        return;
-      }
-
-      container.innerHTML = materials
-        .map(
-          (mat) => `
-        <div class="settings-item">
-          <div class="settings-item-header">
-            <h3>${mat.name || "Материал"}</h3>
-            <label class="toggle-switch">
-              <input type="checkbox" ${mat.active ? "checked" : ""} />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <p>${mat.description || ""}</p>
-          <div class="settings-item-details">
-            <div class="input-group">
-              <label>Цена за грамм (₽)</label>
-              <input type="number" value="${mat.price || 0}" step="0.01" />
-            </div>
-            <div class="input-group">
-              <label>Количество в наличии (г)</label>
-              <input type="number" value="${mat.stock || 0}" />
-            </div>
-            <div class="input-group">
-              <label>Мин. количество для заказа (г)</label>
-              <input type="number" value="${mat.minOrder || 1}" />
-            </div>
-          </div>
-          <div class="settings-item-actions">
-            <button class="btn-secondary">Сохранить</button>
-            <button class="btn-secondary">Отменить</button>
-          </div>
-        </div>
-      `
-        )
-        .join("");
-    } catch (error) {
-      container.innerHTML = `<div class="error-state">Ошибка загрузки: ${error.message}</div>`;
-    }
-  }
-
-  // Tab switching
-  document.querySelectorAll(".settings-tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".settings-tab").forEach((t) => t.classList.remove("active"));
-      document.querySelectorAll(".settings-tab-content").forEach((c) => c.classList.add("hidden"));
-      tab.classList.add("active");
-      const tabName = tab.getAttribute("data-tab");
-      document.getElementById(`${tabName}-tab`).classList.remove("hidden");
-
-      if (tabName === "technologies") {
-        loadTechnologiesSettings();
-      } else if (tabName === "materials") {
-        loadMaterialsSettings();
-      }
     });
-  });
+  }
 
-  document.getElementById("add-technology-btn")?.addEventListener("click", () => {
-    alert("Добавление технологии печати (функция в разработке)");
-  });
+  async function load() {
+    const data = await API.request("/admin/options");
+    options = data.options || [];
+    render();
+  }
 
-  document.getElementById("add-material-btn")?.addEventListener("click", () => {
-    alert("Добавление материала (функция в разработке)");
-  });
-
-  loadTechnologiesSettings();
+  async function init() {
+    try {
+      await API.ensureAdmin();
+      API.wireLogout();
+      await load();
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        window.location.href = "admin.html";
+      }
+    }
+  }
+  refreshBtn?.addEventListener("click", load);
+  init();
 })();

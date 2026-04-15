@@ -1,105 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ADMIN CORE — Панель администратора</title>
+  <title>Админ панель</title>
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
-  <div class="admin-root">
-    <aside class="admin-sidebar">
-      <div class="admin-brand">ADMIN CORE</div>
-      <nav class="admin-nav">
-        <button class="nav-button active" onclick="loadScreen('dashboard')">Главная</button>
-        <button class="nav-button" onclick="window.location.href='admin-orders.html'">Заказы</button>
-        <button class="nav-button" onclick="window.location.href='admin-clients.html'">Клиенты</button>
-        <button class="nav-button" onclick="window.location.href='admin-support.html'">Поддержка</button>
-        <button class="nav-button" onclick="window.location.href='admin-warehouse.html'">Склад</button>
-        <button class="nav-button" onclick="window.location.href='admin-settings.html'">Настройки UI</button>
-      </nav>
-      <div class="admin-status-card">
-        <div class="server-status-title">СТАТУС СЕРВЕРА</div>
-        <div class="server-status-line">
-          <span class="status-dot online"></span>
-          <span class="status-label">ONLINE</span>
-        </div>
+  <div id="admin-login" class="admin-card admin-login">
+    <h1 style="margin-top:0;">Вход администратора</h1>
+    <p style="color:#99a2be;">Используйте admin-аккаунт (телефон и пароль).</p>
+    <form id="admin-login-form">
+      <div style="display:grid;gap:8px;">
+        <input name="phone" type="text" placeholder="Телефон" required />
+        <input name="password" type="password" placeholder="Пароль" required />
+        <button class="btn-primary" type="submit">Войти</button>
       </div>
-      <button class="nav-button logout-btn" onclick="adminLogout()">Выйти</button>
+      <div id="admin-login-status" style="margin-top:8px;color:#99a2be;"></div>
+    </form>
+  </div>
+
+  <div id="admin-app" class="admin-shell" style="display:none;">
+    <aside class="admin-sidebar">
+      <div class="admin-brand">3D ADMIN</div>
+      <nav class="admin-nav">
+        <a href="admin.html" class="active">Дашборд</a>
+        <a href="admin-orders.html">Заказы</a>
+        <a href="admin-clients.html">Клиенты</a>
+        <a href="admin-support.html">Поддержка</a>
+        <a href="admin-warehouse.html">Склад</a>
+        <a href="admin-settings.html">Настройки услуг</a>
+        <a href="admin-notifications.html">Уведомления</a>
+        <a href="admin-reviews.html">Отзывы</a>
+      </nav>
+      <button class="admin-btn" data-admin-logout style="margin-top:12px;">Выйти</button>
     </aside>
-
     <main class="admin-main">
-      <header class="admin-header">
-        <div class="admin-search">
-          <span class="search-icon">🔍</span>
-          <input id="search-input" type="text" placeholder="Поиск по заказам, клиентам..." aria-label="Поиск" />
-        </div>
-        <div class="admin-usercard">
-          <div class="user-avatar">А</div>
-          <div class="user-info">
-            <strong>Иван Админов</strong>
-            <span>SUPER ADMIN</span>
-          </div>
-        </div>
-      </header>
-
-      <section id="login-screen" class="admin-screen admin-login-screen">
-        <div class="admin-login-card">
-          <h1>Вход в админ-панель</h1>
-          <p>Используйте телефон <strong>123456</strong> и имя <strong>admin123</strong>.</p>
-          <form id="admin-login-form" class="admin-login-form">
-            <label>
-              Телефон
-              <input name="phone" type="text" placeholder="123456" autocomplete="off" required />
-            </label>
-            <label>
-              Имя администратора
-              <input name="name" type="text" placeholder="admin123" autocomplete="off" required />
-            </label>
-            <button type="submit" class="btn-primary">Войти</button>
-            <div id="login-message" class="login-message" aria-live="polite"></div>
-          </form>
-        </div>
+      <div class="admin-top">
+        <h2 style="margin:0;">Дашборд</h2>
+        <div data-admin-name></div>
+      </div>
+      <section class="admin-card">
+        <div class="row" id="dashboard-stats"></div>
       </section>
-
-      <section id="dashboard-screen" class="admin-screen admin-dashboard-screen hidden">
-        <div class="dashboard-header">
-          <div>
-            <h1>Панель администратора</h1>
-            <p>Здесь отображается статистика регистрации и заказов.</p>
-          </div>
-          <div class="dashboard-actions">
-            <button id="refresh-button" class="btn-secondary">Обновить</button>
-            <button id="logout-button" class="admin-logout-button">Выйти</button>
-          </div>
+      <section class="admin-card" style="margin-top:10px;">
+        <div class="actions" style="margin-bottom:10px;">
+          <button class="btn-secondary" id="refresh-dashboard">Обновить</button>
         </div>
-
-        <div class="stat-card-row">
-          <article class="stat-card">
-            <span class="stat-title">Всего заказов</span>
-            <strong id="total-orders">0</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-title">Зарегистрированных пользователей</span>
-            <strong id="total-users">0</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-title">Последнее обновление</span>
-            <strong id="last-updated">—</strong>
-          </article>
-        </div>
-
-        <div class="orders-panel">
-          <div class="orders-panel-header">
-            <h2>Последние заказы</h2>
-            <button id="create-order-button" class="btn-secondary">Добавить тестовый заказ</button>
-          </div>
-          <div id="orders-list" class="orders-list"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Клиент</th>
+                <th>Услуга</th>
+                <th>Статус</th>
+                <th>Сумма</th>
+                <th>Дата</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-orders"></tbody>
+          </table>
         </div>
       </section>
     </main>
   </div>
-
-  <script src="scripts/admin.js" defer></script>
+  <script src="scripts/admin-common.js"></script>
+  <script src="scripts/admin.js"></script>
 </body>
 </html>

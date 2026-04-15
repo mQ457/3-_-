@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Админ склад</title>
+  <title>Админ отзывы</title>
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
@@ -15,51 +15,50 @@
         <a href="admin-orders.html">Заказы</a>
         <a href="admin-clients.html">Клиенты</a>
         <a href="admin-support.html">Поддержка</a>
-        <a href="admin-warehouse.html" class="active">Склад</a>
+        <a href="admin-warehouse.html">Склад</a>
         <a href="admin-settings.html">Настройки услуг</a>
         <a href="admin-notifications.html">Уведомления</a>
-        <a href="admin-reviews.html">Отзывы</a>
+        <a href="admin-reviews.html" class="active">Отзывы</a>
       </nav>
       <button class="admin-btn" data-admin-logout style="margin-top:12px;">Выйти</button>
     </aside>
     <main class="admin-main">
       <div class="admin-top">
-        <h2 style="margin:0;">Склад (список опций)</h2>
+        <h2 style="margin:0;">Отзывы</h2>
         <div data-admin-name></div>
       </div>
       <section class="admin-card">
         <div class="filters">
-          <select id="warehouse-type">
-            <option value="">Все типы</option>
-            <option value="material">Материалы</option>
-            <option value="technology">Технологии</option>
-            <option value="color">Цвета</option>
-            <option value="thickness">Толщина</option>
+          <input id="reviews-filter-text" placeholder="Автор или текст отзыва" />
+          <select id="reviews-filter-rating">
+            <option value="">Любая оценка</option>
+            <option value="5">5 звезд</option>
+            <option value="4">4 звезды</option>
+            <option value="3">3 звезды</option>
+            <option value="2">2 звезды</option>
+            <option value="1">1 звезда</option>
           </select>
-          <input id="warehouse-search" placeholder="Поиск по названию/коду" />
-          <button class="btn-secondary" id="warehouse-refresh">Обновить</button>
-          <button class="btn-primary" id="warehouse-add">Добавить</button>
+          <input id="reviews-filter-date" type="date" />
+          <button class="btn-secondary" id="reviews-refresh">Обновить</button>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Тип</th>
-                <th>Код</th>
-                <th>Название</th>
-                <th>Цена</th>
-                <th>Активно</th>
-                <th>Порядок</th>
+                <th>Автор</th>
+                <th>Оценка</th>
+                <th>Отзыв</th>
+                <th>Дата</th>
                 <th>Действие</th>
               </tr>
             </thead>
-            <tbody id="warehouse-body"></tbody>
+            <tbody id="reviews-body"></tbody>
           </table>
         </div>
       </section>
     </main>
   </div>
   <script src="scripts/admin-common.js"></script>
-  <script src="scripts/admin-warehouse.js"></script>
+  <script src="scripts/admin-reviews.js"></script>
 </body>
 </html>

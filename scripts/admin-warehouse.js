@@ -1,142 +1,99 @@
 (function () {
-  const API_BASE = "http://localhost:3000/api";
+  const API = window.AdminCommon;
+  const tbody = document.getElementById("warehouse-body");
+  const typeEl = document.getElementById("warehouse-type");
+  const searchEl = document.getElementById("warehouse-search");
+  const refreshBtn = document.getElementById("warehouse-refresh");
+  const addBtn = document.getElementById("warehouse-add");
+  let options = [];
 
-  function adminLogout() {
-    localStorage.removeItem("isAdminLoggedIn");
-    window.location.href = "admin.html";
-  }
-
-  window.adminLogout = adminLogout;
-
-  async function loadMaterials() {
-    const container = document.getElementById("materials-container");
-    if (!container) return;
-
-    container.innerHTML = '<div class="empty-state">Загрузка материалов...</div>';
-
-    try {
-      const response = await fetch(`${API_BASE}/admin/materials`, {
-        credentials: "include",
-      });
-      if (response.status === 401) {
-        window.location.href = "admin.html";
-        return;
-      }
-      const data = await response.json();
-      const materials = data.materials || [];
-
-      if (materials.length === 0) {
-        container.innerHTML = '<div class="empty-state">Нет материалов</div>';
-        return;
-      }
-
-      container.innerHTML = materials
-        .map(
-          (mat) => `
-        <div class="material-card">
-          <h3>${mat.name || "Материал"}</h3>
-          <p class="material-description">${mat.description || ""}</p>
-          <div class="material-details">
-            <div class="detail-row">
-              <span>Цена:</span>
-              <strong>${mat.price || 0} ₽ / г</strong>
-            </div>
-            <div class="detail-row">
-              <span>В наличии:</span>
-              <strong class="${mat.stock > 0 ? "in-stock" : "out-of-stock"}">${mat.stock || 0} г</strong>
-            </div>
-            <div class="detail-row">
-              <span>Статус:</span>
-              <strong>${mat.active ? "✅ Активен" : "❌ Неактивен"}</strong>
-            </div>
-          </div>
-          <div class="material-actions">
-            <button class="action-btn">Редактировать</button>
-            <button class="action-btn">Удалить</button>
-          </div>
-        </div>
-      `
-        )
-        .join("");
-    } catch (error) {
-      container.innerHTML = `<div class="error-state">Ошибка загрузки: ${error.message}</div>`;
-    }
-  }
-
-  async function loadTechnologies() {
-    const container = document.getElementById("technologies-container");
-    if (!container) return;
-
-    container.innerHTML = '<div class="empty-state">Загрузка технологий...</div>';
-
-    try {
-      const response = await fetch(`${API_BASE}/admin/technologies`, {
-        credentials: "include",
-      });
-      if (response.status === 401) {
-        window.location.href = "admin.html";
-        return;
-      }
-      const data = await response.json();
-      const techs = data.technologies || [];
-
-      if (techs.length === 0) {
-        container.innerHTML = '<div class="empty-state">Нет технологий печати</div>';
-        return;
-      }
-
-      container.innerHTML = techs
-        .map(
-          (tech) => `
-        <div class="technology-item">
-          <div class="tech-header">
-            <h3>${tech.name || "Технология"}</h3>
-            <span class="tech-status">${tech.active ? "✅" : "❌"}</span>
-          </div>
-          <p class="tech-description">${tech.description || ""}</p>
-          <div class="tech-specs">
-            <span class="tech-spec">Мин. размер: ${tech.minSize || "—"}</span>
-            <span class="tech-spec">Макс. размер: ${tech.maxSize || "—"}</span>
-            <span class="tech-spec">Точность: ${tech.precision || "—"}</span>
-          </div>
-          <div class="tech-actions">
-            <button class="action-btn">Редактировать</button>
-            <button class="action-btn">Удалить</button>
-          </div>
-        </div>
-      `
-        )
-        .join("");
-    } catch (error) {
-      container.innerHTML = `<div class="error-state">Ошибка загрузки: ${error.message}</div>`;
-    }
-  }
-
-  // Tab switching
-  document.querySelectorAll(".warehouse-tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".warehouse-tab").forEach((t) => t.classList.remove("active"));
-      document.querySelectorAll(".warehouse-tab-content").forEach((c) => c.classList.add("hidden"));
-      tab.classList.add("active");
-      const tabName = tab.getAttribute("data-tab");
-      document.getElementById(`${tabName}-tab`).classList.remove("hidden");
-
-      if (tabName === "materials") {
-        loadMaterials();
-      } else if (tabName === "technologies") {
-        loadTechnologies();
-      }
+  function render() {
+    const type = String(typeEl?.value || "");
+    const text = String(searchEl?.value || "").trim().toLowerCase();
+    const items = options.filter((option) => {
+      const byType = !type || option.type === type;
+      const byText = !text || [option.code, option.name].join(" ").toLowerCase().includes(text);
+      return byType && byText;
     });
+    if (items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7">Нет данных</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items
+      .map(
+        (option) => `
+      <tr>
+        <td>${option.type}</td>
+        <td>${option.code}</td>
+        <td><input value="${option.name}" data-name-id="${option.id}" /></td>
+        <td><input type="number" value="${option.priceDelta || 0}" data-price-id="${option.id}" /></td>
+        <td><input type="checkbox" data-active-id="${option.id}" ${option.active ? "checked" : ""} /></td>
+        <td><input type="number" value="${option.sortOrder || 0}" data-sort-id="${option.id}" /></td>
+        <td>
+          <button class="btn-secondary" data-save-id="${option.id}">Сохранить</button>
+          <button class="btn-secondary" data-delete-id="${option.id}">Удалить</button>
+        </td>
+      </tr>`
+      )
+      .join("");
+
+    tbody.querySelectorAll("[data-save-id]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-save-id");
+        await API.request(`/admin/options/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: tbody.querySelector(`[data-name-id="${id}"]`)?.value || "",
+            priceDelta: Number(tbody.querySelector(`[data-price-id="${id}"]`)?.value || 0),
+            active: tbody.querySelector(`[data-active-id="${id}"]`)?.checked,
+            sortOrder: Number(tbody.querySelector(`[data-sort-id="${id}"]`)?.value || 0),
+          }),
+        });
+      });
+    });
+
+    tbody.querySelectorAll("[data-delete-id]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-delete-id");
+        await API.request(`/admin/options/${id}`, { method: "DELETE" });
+        await load();
+      });
+    });
+  }
+
+  async function load() {
+    const data = await API.request("/admin/options");
+    options = data.options || [];
+    render();
+  }
+
+  addBtn?.addEventListener("click", async () => {
+    const type = prompt("Тип (material/technology/color/thickness):", "material");
+    const code = prompt("Код:", "new_code");
+    const name = prompt("Название:", "Новая опция");
+    if (!type || !code || !name) return;
+    await API.request("/admin/options", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, code, name, priceDelta: 0, active: true, sortOrder: 100 }),
+    });
+    await load();
   });
 
-  document.getElementById("refresh-warehouse-btn")?.addEventListener("click", () => {
-    loadMaterials();
-    loadTechnologies();
-  });
+  [typeEl, searchEl].forEach((el) => el?.addEventListener("input", render));
+  refreshBtn?.addEventListener("click", load);
 
-  document.getElementById("new-material-btn")?.addEventListener("click", () => {
-    alert("Добавление материала (функция в разработке)");
-  });
-
-  loadMaterials();
+  async function init() {
+    try {
+      await API.ensureAdmin();
+      API.wireLogout();
+      await load();
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        window.location.href = "admin.html";
+      }
+    }
+  }
+  init();
 })();

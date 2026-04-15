@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Админ уведомления</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+
+<body>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-brand">3D ADMIN</div>
+      <nav class="admin-nav">
+        <a href="admin.html">Дашборд</a>
+        <a href="admin-orders.html">Заказы</a>
+        <a href="admin-clients.html">Клиенты</a>
+        <a href="admin-support.html">Поддержка</a>
+        <a href="admin-warehouse.html">Склад</a>
+        <a href="admin-settings.html">Настройки услуг</a>
+        <a href="admin-notifications.html" class="active">Уведомления</a>
+        <a href="admin-reviews.html">Отзывы</a>
+      </nav>
+      <button class="admin-btn" data-admin-logout style="margin-top:12px;">Выйти</button>
+    </aside>
+    <main class="admin-main">
+      <div class="admin-top">
+        <h2 style="margin:0;">Уведомления клиентам</h2>
+        <div data-admin-name></div>
+      </div>
+      <section class="admin-card grid-two">
+        <div>
+          <div class="filters">
+            <input id="notify-recipient-query" placeholder="Клиент/номер заказа/телефон/email" />
+            <button class="btn-secondary" id="notify-recipient-search" type="button">Найти</button>
+          </div>
+          <div id="notify-recipient-list" class="chat-list"></div>
+        </div>
+        <div>
+          <div class="muted-small" style="margin-bottom:8px;">Выбранный клиент</div>
+          <input id="notify-recipient" name="recipient" readonly placeholder="Выберите клиента в списке слева" />
+          <div id="notify-messages" class="chat-messages" style="margin-top:10px;"></div>
+          <form id="notify-form">
+            <textarea id="notify-text" name="message" rows="3" placeholder="Ответ клиенту"></textarea>
+            <div class="actions" style="margin-top:8px;justify-content:space-between;align-items:center;">
+              <input id="notify-file" type="file" name="attachment" style="max-width:56%;" />
+              <button class="btn-primary" type="submit">Отправить</button>
+            </div>
+            <div id="notify-status" class="muted-small" style="margin-top:8px;"></div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="scripts/admin-common.js"></script>
+  <script src="scripts/admin-notifications.js"></script>
+</body>
+
+</html>

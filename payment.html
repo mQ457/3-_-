@@ -37,15 +37,15 @@
           <div class="side-bottom">
             <div class="side-user">
               <div>
-                <div class="name">Александр А.</div>
+                <div class="name"></div>
                 <div class="role">клиент</div>
               </div>
-              <div class="avatar" aria-hidden="true"></div>
+              
             </div>
-            <div class="side-exit" role="button" tabindex="0" aria-label="Выход">
-              <span class="exit-ic" aria-hidden="true"></span>
+            <button id="logout-btn" class="side-exit" type="button" style="background:none;border:none;">
+              <span class="exit-ic" aria-hidden="true"><img src="image/Frame_1_965.png" alt="exit"></span>
               Выход
-            </div>
+            </button>
           </div>
         </aside>
 
@@ -55,35 +55,41 @@
               <h1 class="app-title">Оплата заказов</h1>
               <p class="app-sub">Выберите или привяжите карту</p>
             </div>
-            <div class="breadcrumb"><span class="arrow">‹</span><a href="landing.html">Главная</a></div>
+            <div class="breadcrumb"><span class="arrow-icon"><img class="" src="image/Frame_1_748.png" alt="exit"></span><a href="landing.html">Главная</a></div>
           </div>
 
           <div class="pay-grid">
             <section class="card pay-top">
-              <div class="pay-cards" aria-label="Карты">
-                <div class="bank-card is-active">
-                  <div class="brand">
-                    <span aria-hidden="true">💳</span>
-                    <span class="hint">01/33</span>
-                  </div>
-                  <div class="num">•••• 9911</div>
-                  <div class="hint">ALEXANDER IVANOV</div>
-                </div>
-
-                <div class="bank-card">
-                  <div class="brand">
-                    <span aria-hidden="true">💳</span>
-                    <span class="trash" aria-hidden="true"></span>
-                  </div>
-                  <div class="num">•••• 9911</div>
-                  <div class="hint">01/33</div>
-                </div>
-
-                <div class="bank-card new-card">
+              <div class="pay-cards" aria-label="Карты" id="payment-cards">
+                <div class="bank-card new-card" id="new-card-trigger">
                   +<br />
-                  Привязать новую карту
+                  Привязать карту
                 </div>
               </div>
+              <form id="add-card-form" style="margin-top:12px;display:none;">
+                <div class="two-cols">
+                  <label class="field">
+                    <span class="label">Номер карты</span>
+                    <input class="input" type="text" name="cardNumber" placeholder="0000 0000 0000 0000" />
+                  </label>
+                  <label class="field">
+                    <span class="label">Владелец</span>
+                    <input class="input" type="text" name="holderName" placeholder="IVAN IVANOV" />
+                  </label>
+                </div>
+                <div class="two-cols" style="margin-top:8px;">
+                  <label class="field">
+                    <span class="label">Месяц</span>
+                    <input class="input" type="number" name="expMonth" min="1" max="12" />
+                  </label>
+                  <label class="field">
+                    <span class="label">Год</span>
+                    <input class="input" type="number" name="expYear" min="2026" max="2099" />
+                  </label>
+                </div>
+                <button class="btn btn-primary" type="submit" style="margin-top:8px;">Сохранить карту</button>
+                <div id="payment-status" class="muted-small" style="margin-top:8px;"></div>
+              </form>
             </section>
 
             <section class="card pay-list">
@@ -92,26 +98,15 @@
                 <a href="#" class="muted-small" style="font-weight:1000;text-decoration:none; color:var(--accent2);">Все заказы &gt;</a>
               </div>
 
-              <div class="pay-item">
-                <div class="pay-item-row">
-                  <div class="left">
-                    <div class="ico" aria-hidden="true"></div>
-                    <div class="meta">
-                      Заказ #A-002
-                      <span class="sub">Сканирование</span>
-                    </div>
-                  </div>
-                  <div class="right">
-                    <div class="sum">2500руб.</div>
-                    <a class="link" href="#" role="button">Оплатить сейчас</a>
-                  </div>
-                </div>
-              </div>
+              <div id="payment-orders"></div>
             </section>
           </div>
         </div>
       </div>
     </div>
+    <script src="scripts/app-bootstrap.js"></script>
+    <script src="scripts/order-notifications.js"></script>
+    <script src="scripts/payment.js"></script>
   </body>
 </html>
 

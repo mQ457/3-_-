@@ -12,7 +12,7 @@ async function requireAuth(req, res, next) {
 
     const tokenHash = hashSessionToken(token);
     const result = await db.query(
-      `SELECT s.id, s.user_id, u.phone, u.full_name, u.email
+      `SELECT s.id, s.user_id, u.phone, u.full_name, u.email, u.role
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = $1 AND s.expires_at > datetime('now')
@@ -32,6 +32,7 @@ async function requireAuth(req, res, next) {
       phone: session.phone,
       fullName: session.full_name,
       email: session.email,
+      role: session.role || "user",
     };
 
     next();

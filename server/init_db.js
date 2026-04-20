@@ -1,40 +1,48 @@
-const fs = require('fs');
-const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const { Pool } = require("pg");
 
-const envFile = path.resolve(__dirname, '.env');
-const env = fs.readFileSync(envFile, 'utf8').split(/\r?\n/).reduce((acc, line) => {
-  const m = line.match(/^([^=#]+)=([^#]*)/);
-  if (m) acc[m[1].trim()] = m[2].trim();
-  return acc;
-}, {});
-
-const dbFile = path.resolve(__dirname, env.DATABASE_FILE || './data/app.db');
-const dir = path.dirname(dbFile);
-if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-const sql = fs.readFileSync(path.resolve(__dirname, 'sql', 'init.sql'), 'utf8');
-const db = new sqlite3.Database(dbFile);
-
-let statements = sql.split(/;\s*\n/).map(s => s.trim()).filter(Boolean);
-let i = 0;
-
-function runNext() {
-  if (i >= statements.length) {
-    console.log('DB initialized:', dbFile);
-    db.close();
-    return;
-  }
-  const stmt = statements[i++];
-  db.run(stmt, (err) => {
-    if (err) {
-      console.error('Error in init db:', err.message, stmt);
-      db.close();
-      process.exit(1);
-      return;
-    }
-    runNext();
-  });
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is required");
 }
 
-runNext();
+function shouldUseSsl(url) {
+  try {
+    const host = new URL(url).hostname;
+    return host !== "localhost" && host !== "127.0.0.1";
+  } catch (_error) {
+    return true;
+  }
+}
+
+const pool = new Pool({
+  connectionString,
+  ssl: shouldUseSsl(connectionString) ? { rejectUnauthorized: false } : false,
+});
+
+const sql = fs.readFileSync(path.resolve(__dirname, "sql", "init.sql"), "utf8");
+const statements = sql
+  .split(/;\s*(?:\r?\n|$)/)
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+(async () => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const statement of statements) {
+      await client.query(statement);
+    }
+    await client.query("COMMIT");
+    console.log("Postgres schema initialized successfully.");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Schema initialization failed:", error.message);
+    process.exitCode = 1;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+})();

@@ -1,5 +1,3 @@
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   phone TEXT UNIQUE NOT NULL,
@@ -8,16 +6,16 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT,
   role TEXT NOT NULL DEFAULT 'user',
   is_active INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   token_hash TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -29,11 +27,11 @@ CREATE TABLE IF NOT EXISTS user_addresses (
   phone TEXT,
   address_line TEXT NOT NULL,
   city TEXT,
-  lat REAL,
-  lng REAL,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
   is_default INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -46,8 +44,8 @@ CREATE TABLE IF NOT EXISTS payment_methods (
   exp_month INTEGER,
   exp_year INTEGER,
   is_default INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -60,7 +58,7 @@ CREATE TABLE IF NOT EXISTS service_options (
   meta_json TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   sort_order INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -80,8 +78,8 @@ CREATE TABLE IF NOT EXISTS orders (
   file_path TEXT,
   file_size INTEGER,
   file_ext TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY(address_id) REFERENCES user_addresses(id) ON DELETE SET NULL,
   FOREIGN KEY(payment_method_id) REFERENCES payment_methods(id) ON DELETE SET NULL
@@ -92,9 +90,9 @@ CREATE TABLE IF NOT EXISTS support_threads (
   user_id TEXT NOT NULL,
   subject TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'open',
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_message_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -104,7 +102,7 @@ CREATE TABLE IF NOT EXISTS support_messages (
   sender_type TEXT NOT NULL,
   sender_id TEXT,
   message TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(thread_id) REFERENCES support_threads(id) ON DELETE CASCADE
 );
 
@@ -115,9 +113,9 @@ CREATE TABLE IF NOT EXISTS order_threads (
   status TEXT NOT NULL DEFAULT 'open',
   unread_user INTEGER NOT NULL DEFAULT 0,
   unread_admin INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_message_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -128,7 +126,7 @@ CREATE TABLE IF NOT EXISTS order_messages (
   sender_type TEXT NOT NULL,
   sender_id TEXT,
   message TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(thread_id) REFERENCES order_threads(id) ON DELETE CASCADE
 );
 
@@ -140,7 +138,7 @@ CREATE TABLE IF NOT EXISTS order_message_attachments (
   mime TEXT,
   size INTEGER NOT NULL DEFAULT 0,
   ext TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(message_id) REFERENCES order_messages(id) ON DELETE CASCADE
 );
 
@@ -155,7 +153,7 @@ CREATE TABLE IF NOT EXISTS user_notifications (
   file_mime TEXT,
   file_size INTEGER,
   is_read INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY(admin_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -165,7 +163,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   user_id TEXT NOT NULL,
   rating INTEGER NOT NULL,
   comment TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -187,3 +185,4 @@ CREATE INDEX IF NOT EXISTS idx_user_notifications_unread ON user_notifications(u
 CREATE INDEX IF NOT EXISTS idx_user_notifications_created_at ON user_notifications(created_at);
 CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at);
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_service_options_unique ON service_options(type, code);

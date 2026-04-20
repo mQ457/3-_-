@@ -1,12 +1,21 @@
-# Auth API (Express + SQLite)
+# Auth API (Express + Postgres)
 
 ## 1) Setup
 
 1. Copy `.env.example` to `.env`.
-2. If needed, update `DATABASE_FILE` in `.env` (default: `./data/app.db`).
+2. Set `DATABASE_URL` in `.env` (for example Neon/Supabase/local Postgres).
 3. Install dependencies in the `server` folder:
    - `cd server && npm install`
-4. The database file and folder are created automatically when the server starts.
+4. On first start the server creates tables automatically from `sql/init.sql`, seeds service options and ensures admin account.
+
+Default admin credentials (if not overridden via env):
+- phone: `+79990000000`
+- password: `Admin12345!`
+
+You can override them with:
+- `ADMIN_PHONE`
+- `ADMIN_PASSWORD`
+- or `ADMIN_PASSWORD_HASH`
 
 ## 2) Run locally
 
@@ -15,33 +24,29 @@
 
 Server starts on `http://localhost:3000` by default.
 
-## 3) Free hosting recommendation
+## 3) Render + Neon (free and persistent)
 
-### Recommended free host: Render
+Render web service:
+1. Register on `https://render.com`.
+2. Create a new Web Service and connect your repository.
+3. Set **Root Directory** to `server`.
+4. Set **Build Command** to `npm install`.
+5. Set **Start Command** to `npm start`.
 
-Render имеет бесплатный тариф, поддерживает Node.js и позволяет хранить файлы SQLite на диске сервисa.
+Environment Variables in Render:
+- `PORT=3000`
+- `DATABASE_URL=postgresql://...` (your Neon connection string)
+- `SESSION_COOKIE_NAME=session_token`
+- `SESSION_TTL_DAYS=7`
+- `CORS_ORIGIN=https://<your-service>.onrender.com`
+- `NODE_ENV=production`
+- optional: `ADMIN_PHONE=+79990000000`
+- optional: `ADMIN_PASSWORD=Admin12345!`
 
-1. Зарегистрируйтесь на `https://render.com`.
-2. Создайте новый Web Service.
-3. Подключите свой GitHub/GitLab репозиторий или выберите `Manual Deploy`.
-4. Укажите корневую папку репозитория `server` (важно: именно папку `server`).
-5. В поле Build Command используйте:
-   - `npm install`
-6. В поле Start Command используйте:
-   - `npm start`
-7. В настройках Environment Variables добавьте:
-   - `PORT=3000`
-   - `DATABASE_FILE=./data/app.db`
-   - `SESSION_COOKIE_NAME=session_token`
-   - `CORS_ORIGIN=https://<ваш-сервис>.onrender.com`
-   - `NODE_ENV=production`
-
-Статические файлы (HTML, CSS, JS) будут обслуживаться из корня проекта автоматически.
-
-### Альтернативы
-
-- Fly.io — бесплатный тариф с возможностью монтировать persistent volume для SQLite.
-- Railway — бесплатный план хорош для теста, но с SQLite и хранением на диске могут быть ограничения.
+Neon:
+1. Create project on `https://neon.tech`.
+2. Copy connection string and paste it into `DATABASE_URL` on Render.
+3. Redeploy Render service.
 
 ## 4) API
 

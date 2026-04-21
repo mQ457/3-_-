@@ -1,15 +1,32 @@
 const crypto = require("crypto");
 const db = require("../db");
 
-const AI_PROVIDER = String(process.env.AI_PROVIDER || "ollama").trim().toLowerCase();
-const GROQ_API_KEY = String(process.env.GROQ_API_KEY || "").trim();
-const GROQ_MODEL = String(process.env.GROQ_MODEL || "llama-3.1-8b-instant").trim();
-const GROQ_BASE_URL = String(process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/+$/, "");
-const OLLAMA_BASE_URL = String(process.env.OLLAMA_URL || "http://127.0.0.1:11434").replace(/\/+$/, "");
-const OLLAMA_MODEL = String(process.env.OLLAMA_MODEL || "qwen2.5:3b").trim();
-const OLLAMA_API_KEY = String(process.env.OLLAMA_API_KEY || "").trim();
+function cleanEnv(value, fallback = "") {
+  const raw = String(value == null ? fallback : value).trim();
+  if (!raw) return "";
+  return raw.replace(/^['"]+|['"]+$/g, "").trim();
+}
+
+function normalizeBaseUrl(value, fallback) {
+  const cleaned = cleanEnv(value, fallback).replace(/^\?+/, "");
+  if (!cleaned) return fallback;
+  return cleaned.replace(/\/+$/, "");
+}
+
+const GROQ_API_KEY = cleanEnv(process.env.GROQ_API_KEY);
+const GROQ_MODEL = cleanEnv(process.env.GROQ_MODEL, "llama-3.1-8b-instant");
+const GROQ_BASE_URL = normalizeBaseUrl(process.env.GROQ_BASE_URL, "https://api.groq.com/openai/v1");
+const OLLAMA_BASE_URL = normalizeBaseUrl(process.env.OLLAMA_URL, "http://127.0.0.1:11434");
+const OLLAMA_MODEL = cleanEnv(process.env.OLLAMA_MODEL, "qwen2.5:3b");
+const OLLAMA_API_KEY = cleanEnv(process.env.OLLAMA_API_KEY);
 const OLLAMA_TIMEOUT_MS = Math.max(3000, Number(process.env.OLLAMA_TIMEOUT_MS || 45000) || 45000);
 const SUPPORT_BOT_ENABLED = String(process.env.SUPPORT_BOT_ENABLED || "1") !== "0";
+const AI_PROVIDER_RAW = cleanEnv(process.env.AI_PROVIDER, "");
+const AI_PROVIDER = (() => {
+  const normalized = AI_PROVIDER_RAW.toLowerCase();
+  if (normalized === "groq" || normalized === "ollama") return normalized;
+  return GROQ_API_KEY ? "groq" : "ollama";
+})();
 
 const HUMAN_PATTERNS = [
   /вызов[иьяю]*\s+(консультант|оператор|человек)/i,
@@ -119,6 +136,9 @@ async function loadThreadContext(threadId) {
 }
 
 async function callOllama(prompt) {
+  if (typeof fetch !== "function") {
+    throw new Error("Global fetch is unavailable in current Node runtime");
+  }
   const abortController = new AbortController();
   const timeoutId = setTimeout(() => abortController.abort(), OLLAMA_TIMEOUT_MS);
   const headers = { "Content-Type": "application/json" };
@@ -148,6 +168,9 @@ async function callOllama(prompt) {
 }
 
 async function callGroq(prompt) {
+  if (typeof fetch !== "function") {
+    throw new Error("Global fetch is unavailable in current Node runtime");
+  }
   if (!GROQ_API_KEY) {
     throw new Error("Groq API key is missing");
   }
@@ -184,6 +207,9 @@ async function callGroq(prompt) {
 }
 
 async function callModel(prompt) {
+  if (AI_PROVIDER === "groq" && !GROQ_API_KEY) {
+    throw new Error("AI provider is groq but GROQ_API_KEY is not set");
+  }
   if (AI_PROVIDER === "groq") {
     return callGroq(prompt);
   }
@@ -191,6 +217,8 @@ async function callModel(prompt) {
 }
 
 async function processSupportBotReply({ threadId, userMessage }) {
+  // eslint-disable-next-line no-console
+  console.log(`[support-bot] thread=${threadId} provider=${AI_PROVIDER} enabled=${SUPPORT_BOT_ENABLED ? "1" : "0"}`);
   const safeMessage = String(userMessage || "").trim();
   if (!safeMessage) return { handledByBot: false, escalated: false };
 
@@ -233,7 +261,9 @@ async function processSupportBotReply({ threadId, userMessage }) {
     await updateThreadStatus(threadId, "bot_active");
     await insertBotMessage(threadId, parsed.message);
     return { handledByBot: true, escalated: false, reason: parsed.action };
-  } catch (_error) {
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[support-bot] model request failed:", error?.message || error);
     await updateThreadStatus(threadId, "open");
     await insertBotMessage(
       threadId,

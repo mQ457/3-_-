@@ -10,6 +10,20 @@
   const supportMessages = document.getElementById("support-messages");
   const supportReplyForm = document.getElementById("support-reply-form");
   let activeThreadId = "";
+  function supportStatusLabel(status) {
+    const key = String(status || "").trim();
+    if (key === "bot_active") return "Обрабатывает бот";
+    if (key === "open") return "Передано консультанту";
+    if (key === "closed") return "Закрыто";
+    return key || "—";
+  }
+
+  function senderMeta(senderType) {
+    if (senderType === "admin") return { name: "Поддержка", bg: "#fff1ea" };
+    if (senderType === "bot") return { name: "ИИ-помощник", bg: "#eefcf3" };
+    return { name: "Вы", bg: "#f4f7ff" };
+  }
+
   const sidebarName = document.getElementById("sidebar-name");
   const emailInput = form?.elements?.email;
 
@@ -96,7 +110,7 @@
           (thread) => `
           <div data-thread-id="${thread.id}" style="padding:10px 12px;border:1px solid #e8eaf2;border-radius:10px;margin-top:8px;cursor:pointer;">
             <div style="font-weight:700;">${thread.subject}</div>
-            <div class="muted-small">Статус: ${thread.status} | ${new Date(thread.lastMessageAt).toLocaleString("ru-RU")}</div>
+            <div class="muted-small">Статус: ${supportStatusLabel(thread.status)} | ${new Date(thread.lastMessageAt).toLocaleString("ru-RU")}</div>
           </div>`
         )
         .join("");
@@ -123,13 +137,14 @@
       supportChat.style.display = "block";
       supportChatTitle.textContent = `Чат обращения #${activeThreadId.slice(0, 8)}`;
       supportMessages.innerHTML = messages
-        .map(
-          (msg) => `
-          <div style="margin-bottom:6px;padding:8px;border-radius:8px;background:${msg.senderType === "admin" ? "#fff1ea" : "#f4f7ff"};">
-            <div class="muted-small">${msg.senderType === "admin" ? "Поддержка" : "Вы"} • ${new Date(msg.createdAt).toLocaleString("ru-RU")}</div>
+        .map((msg) => {
+          const sender = senderMeta(msg.senderType);
+          return `
+          <div style="margin-bottom:6px;padding:8px;border-radius:8px;background:${sender.bg};">
+            <div class="muted-small">${sender.name} • ${new Date(msg.createdAt).toLocaleString("ru-RU")}</div>
             <div>${msg.message}</div>
-          </div>`
-        )
+          </div>`;
+        })
         .join("");
       supportMessages.scrollTop = supportMessages.scrollHeight;
     } catch (_error) {}

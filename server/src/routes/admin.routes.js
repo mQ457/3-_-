@@ -20,7 +20,7 @@ router.get("/dashboard", async (_req, res, next) => {
     const [orders, users, openThreads] = await Promise.all([
       db.query("SELECT count(*) AS count FROM orders"),
       db.query("SELECT count(*) AS count FROM users WHERE role = 'user'"),
-      db.query("SELECT count(*) AS count FROM support_threads WHERE status != 'closed'"),
+      db.query("SELECT count(*) AS count FROM support_threads WHERE status = 'open'"),
     ]);
 
     return res.json({
@@ -52,6 +52,7 @@ router.get("/nav-updates", async (req, res, next) => {
         `SELECT COUNT(*) AS count
          FROM support_threads t
          WHERE datetime(t.last_message_at) > datetime($1)
+           AND t.status = 'open'
            AND (
              SELECT sm.sender_type
              FROM support_messages sm
@@ -459,7 +460,7 @@ router.get("/support/threads", async (_req, res, next) => {
         updatedAt: row.updated_at,
         lastMessageAt: row.last_message_at,
         lastSenderType: row.last_sender_type || "",
-        needsAdminReply: row.last_sender_type === "user",
+        needsAdminReply: row.status === "open" && row.last_sender_type === "user",
         user: {
           fullName: row.full_name || "",
           phone: row.phone || "",

@@ -9,6 +9,7 @@ const {
   appendThreadMessage,
 } = require("../domain/order-chat");
 const { notificationUpload } = require("../domain/notification-upload");
+const { processSupportBotReply } = require("../domain/support-bot");
 
 const router = express.Router();
 
@@ -403,7 +404,7 @@ router.post("/support/threads", requireAuth, async (req, res, next) => {
     const msgId = crypto.randomUUID();
     await db.query(
       `INSERT INTO support_threads (id, user_id, subject, status, created_at, updated_at, last_message_at)
-       VALUES ($1, $2, $3, 'open', datetime('now'), datetime('now'), datetime('now'))`,
+       VALUES ($1, $2, $3, 'bot_active', datetime('now'), datetime('now'), datetime('now'))`,
       [threadId, req.auth.userId, String(subject).trim()]
     );
     await db.query(
@@ -411,7 +412,16 @@ router.post("/support/threads", requireAuth, async (req, res, next) => {
        VALUES ($1, $2, 'user', $3, $4, datetime('now'))`,
       [msgId, threadId, req.auth.userId, String(message).trim()]
     );
-    res.status(201).json({ ok: true, threadId });
+    const botResult = await processSupportBotReply({
+      threadId,
+      userMessage: String(message).trim(),
+    });
+    res.status(201).json({
+      ok: true,
+      threadId,
+      escalated: Boolean(botResult?.escalated),
+      handledByBot: Boolean(botResult?.handledByBot),
+    });
   } catch (error) {
     next(error);
   }
@@ -454,12 +464,16 @@ router.post("/support/threads/:threadId/messages", requireAuth, async (req, res,
     if (!String(message || "").trim()) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Введите сообщение." });
     }
-    const thread = await db.query("SELECT id FROM support_threads WHERE id = $1 AND user_id = $2 LIMIT 1", [
+    const thread = await db.query("SELECT id, status FROM support_threads WHERE id = $1 AND user_id = $2 LIMIT 1", [
       req.params.threadId,
       req.auth.userId,
     ]);
-    if (!thread.rows[0]) {
+    const threadRow = thread.rows[0];
+    if (!threadRow) {
       return res.status(404).json({ error: "NOT_FOUND", message: "Обращение не найдено." });
+    }
+    if (threadRow.status === "closed") {
+      return res.status(400).json({ error: "VALIDATION_ERROR", message: "Обращение закрыто. Создайте новое." });
     }
     await db.query(
       `INSERT INTO support_messages (id, thread_id, sender_type, sender_id, message, created_at)
@@ -473,7 +487,18 @@ router.post("/support/threads/:threadId/messages", requireAuth, async (req, res,
        WHERE id = $1`,
       [req.params.threadId]
     );
-    res.status(201).json({ ok: true });
+    if (threadRow.status === "open") {
+      return res.status(201).json({ ok: true, escalated: true, handledByBot: false });
+    }
+    const botResult = await processSupportBotReply({
+      threadId: req.params.threadId,
+      userMessage: String(message).trim(),
+    });
+    return res.status(201).json({
+      ok: true,
+      escalated: Boolean(botResult?.escalated),
+      handledByBot: Boolean(botResult?.handledByBot),
+    });
   } catch (error) {
     next(error);
   }

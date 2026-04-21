@@ -24,6 +24,21 @@ You can override them with:
 
 Server starts on `http://localhost:3000` by default.
 
+## 2.1) Local AI support bot (Ollama)
+
+Support chat can auto-reply with a local LLM and escalate to human admin only when needed.
+
+1. Install Ollama: `https://ollama.com/download`
+2. Pull model (recommended starter): `ollama pull qwen2.5:3b`
+3. Add env variables to `.env`:
+   - `SUPPORT_BOT_ENABLED=1`
+   - `OLLAMA_URL=http://127.0.0.1:11434`
+   - `OLLAMA_MODEL=qwen2.5:3b`
+
+Escalation behavior:
+- If user asks for a human (operator/consultant), thread is moved to human queue (`status=open`).
+- If AI handles request, thread stays bot-handled (`status=bot_active`) and no admin notification is raised.
+
 ## 3) Render + Neon (free and persistent)
 
 Render web service:

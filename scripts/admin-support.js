@@ -12,6 +12,14 @@
   let selectedThreadId = "";
   let allThreads = [];
 
+  function statusLabel(status) {
+    const key = String(status || "").trim();
+    if (key === "bot_active") return "Обрабатывает бот";
+    if (key === "open") return "Нужен консультант";
+    if (key === "closed") return "Закрыт";
+    return key || "—";
+  }
+
   function formatDate(value) {
     if (!value) return "—";
     return new Date(value).toLocaleString("ru-RU");
@@ -22,7 +30,9 @@
       .map(
         (msg) => `
       <div class="msg ${msg.senderType === "admin" ? "admin" : ""}">
-        <div style="font-size:12px;color:#99a2be;">${msg.senderType === "admin" ? "Админ" : "Клиент"} · ${formatDate(msg.createdAt)}</div>
+        <div style="font-size:12px;color:#99a2be;">${
+          msg.senderType === "admin" ? "Админ" : msg.senderType === "bot" ? "ИИ-бот" : "Клиент"
+        } · ${formatDate(msg.createdAt)}</div>
         <div>${msg.message}</div>
       </div>`
       )
@@ -57,7 +67,7 @@
           <b>${thread.subject}</b>
           ${thread.needsAdminReply ? '<span class="chat-unread-dot" aria-label="Нужно ответить клиенту"></span>' : ""}
         </div>
-        <div style="font-size:12px;color:#99a2be;">${thread.user?.fullName || thread.user?.phone || "Клиент"} · ${thread.status}</div>
+        <div style="font-size:12px;color:#99a2be;">${thread.user?.fullName || thread.user?.phone || "Клиент"} · ${statusLabel(thread.status)}</div>
         <div style="font-size:12px;color:#99a2be;">${formatDate(thread.lastMessageAt)}</div>
       </div>`
       )
@@ -67,7 +77,7 @@
       item.addEventListener("click", async () => {
         selectedThreadId = item.getAttribute("data-thread-id");
         const thread = allThreads.find((entry) => entry.id === selectedThreadId);
-        headerEl.textContent = `${thread.subject} (${thread.status})`;
+        headerEl.textContent = `${thread.subject} (${statusLabel(thread.status)})`;
         renderThreads();
         await loadMessages(selectedThreadId);
       });
@@ -79,7 +89,7 @@
     allThreads = data.threads || [];
     if (!selectedThreadId && allThreads[0]) {
       selectedThreadId = allThreads[0].id;
-      headerEl.textContent = `${allThreads[0].subject} (${allThreads[0].status})`;
+      headerEl.textContent = `${allThreads[0].subject} (${statusLabel(allThreads[0].status)})`;
       await loadMessages(selectedThreadId);
     }
     renderThreads();

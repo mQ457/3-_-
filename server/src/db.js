@@ -64,6 +64,8 @@ async function seedServiceOptions(client) {
     { type: "color", code: "blue", name: "Синий", priceDelta: 120, sortOrder: 5 },
     { type: "color", code: "indigo", name: "Индиго", priceDelta: 120, sortOrder: 6 },
     { type: "color", code: "violet", name: "Фиолетовый", priceDelta: 120, sortOrder: 7 },
+    { type: "color", code: "black", name: "Черный", priceDelta: 100, sortOrder: 8 },
+    { type: "color", code: "white", name: "Белый", priceDelta: 80, sortOrder: 9 },
     { type: "thickness", code: "0.1", name: "0.1 мм", priceDelta: 600, sortOrder: 1 },
     { type: "thickness", code: "0.2", name: "0.2 мм", priceDelta: 300, sortOrder: 2 },
     { type: "thickness", code: "0.3", name: "0.3 мм", priceDelta: 0, sortOrder: 3 },
@@ -98,6 +100,8 @@ async function seedPrintInventory(client) {
     { code: "blue", name: "Синий" },
     { code: "indigo", name: "Индиго" },
     { code: "violet", name: "Фиолетовый" },
+    { code: "black", name: "Черный" },
+    { code: "white", name: "Белый" },
   ];
   const thicknesses = [0.1, 0.2, 0.3];
   const materialDefs = [

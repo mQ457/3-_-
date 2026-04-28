@@ -53,12 +53,17 @@ async function seedServiceOptions(client) {
     { type: "material", code: "abs", name: "ABS", priceDelta: 400, sortOrder: 2 },
     { type: "material", code: "petg", name: "PETG", priceDelta: 600, sortOrder: 3 },
     { type: "material", code: "resin", name: "Смола", priceDelta: 1200, sortOrder: 4 },
+    { type: "material", code: "nylon", name: "Nylon", priceDelta: 900, sortOrder: 5 },
     { type: "technology", code: "fdm", name: "FDM", priceDelta: 0, sortOrder: 1 },
     { type: "technology", code: "sla", name: "SLA", priceDelta: 1000, sortOrder: 2 },
     { type: "technology", code: "sls", name: "SLS", priceDelta: 1300, sortOrder: 3 },
-    { type: "color", code: "white", name: "Белый", priceDelta: 0, sortOrder: 1 },
-    { type: "color", code: "black", name: "Черный", priceDelta: 100, sortOrder: 2 },
-    { type: "color", code: "green", name: "Зеленый", priceDelta: 150, sortOrder: 3 },
+    { type: "color", code: "red", name: "Красный", priceDelta: 120, sortOrder: 1 },
+    { type: "color", code: "orange", name: "Оранжевый", priceDelta: 120, sortOrder: 2 },
+    { type: "color", code: "yellow", name: "Желтый", priceDelta: 120, sortOrder: 3 },
+    { type: "color", code: "green", name: "Зеленый", priceDelta: 120, sortOrder: 4 },
+    { type: "color", code: "blue", name: "Синий", priceDelta: 120, sortOrder: 5 },
+    { type: "color", code: "indigo", name: "Индиго", priceDelta: 120, sortOrder: 6 },
+    { type: "color", code: "violet", name: "Фиолетовый", priceDelta: 120, sortOrder: 7 },
     { type: "thickness", code: "0.1", name: "0.1 мм", priceDelta: 600, sortOrder: 1 },
     { type: "thickness", code: "0.2", name: "0.2 мм", priceDelta: 300, sortOrder: 2 },
     { type: "thickness", code: "0.3", name: "0.3 мм", priceDelta: 0, sortOrder: 3 },
@@ -80,94 +85,84 @@ async function seedServiceOptions(client) {
 }
 
 async function seedPrintInventory(client) {
-  const rows = [
-    {
-      itemType: "technology",
-      code: "tech-fdm",
-      name: "FDM",
-      technologyCode: "fdm",
-      unit: "service",
-      stockQty: 0,
-      pricePerCm3: 0,
-      sortOrder: 1,
-      meta: { defaultSpeedCm3h: 22 },
-    },
-    {
-      itemType: "technology",
-      code: "tech-sla",
-      name: "SLA",
-      technologyCode: "sla",
-      unit: "service",
-      stockQty: 0,
-      pricePerCm3: 0,
-      sortOrder: 2,
-      meta: { defaultSpeedCm3h: 18 },
-    },
-    {
-      itemType: "material_variant",
-      code: "fdm-pla-green-0.2",
-      name: "PLA Зеленый 0.2мм",
-      technologyCode: "fdm",
-      materialCode: "pla",
-      colorCode: "green",
-      thicknessMm: 0.2,
-      unit: "g",
-      stockQty: 12000,
-      pricePerCm3: 42,
-      lowStockThreshold: 1800,
-      stopStockThreshold: 500,
-      sortOrder: 10,
-      meta: { displayName: "PLA / Зеленый / 0.2 мм", densityGcm3: 1.24, defaultSpeedCm3h: 24 },
-    },
-    {
-      itemType: "material_variant",
-      code: "fdm-pla-white-0.3",
-      name: "PLA Белый 0.3мм",
-      technologyCode: "fdm",
-      materialCode: "pla",
-      colorCode: "white",
-      thicknessMm: 0.3,
-      unit: "g",
-      stockQty: 8000,
-      pricePerCm3: 36,
-      lowStockThreshold: 1200,
-      stopStockThreshold: 400,
-      sortOrder: 11,
-      meta: { displayName: "PLA / Белый / 0.3 мм", densityGcm3: 1.24, defaultSpeedCm3h: 28 },
-    },
-    {
-      itemType: "material_variant",
-      code: "fdm-abs-green-0.2",
-      name: "ABS Зеленый 0.2мм",
-      technologyCode: "fdm",
-      materialCode: "abs",
-      colorCode: "green",
-      thicknessMm: 0.2,
-      unit: "g",
-      stockQty: 6000,
-      pricePerCm3: 50,
-      lowStockThreshold: 1000,
-      stopStockThreshold: 300,
-      sortOrder: 12,
-      meta: { displayName: "ABS / Зеленый / 0.2 мм", densityGcm3: 1.04, defaultSpeedCm3h: 20 },
-    },
-    {
-      itemType: "material_variant",
-      code: "sla-resin-clear-0.1",
-      name: "Resin Прозрачный 0.1мм",
-      technologyCode: "sla",
-      materialCode: "resin",
-      colorCode: "clear",
-      thicknessMm: 0.1,
-      unit: "ml",
-      stockQty: 5000,
-      pricePerCm3: 95,
-      lowStockThreshold: 900,
-      stopStockThreshold: 250,
-      sortOrder: 20,
-      meta: { displayName: "Resin / Прозрачный / 0.1 мм", densityGcm3: 1.1, defaultSpeedCm3h: 16 },
-    },
+  const technologyDefs = [
+    { code: "fdm", name: "FDM", defaultSpeedCm3h: 22, sortOrder: 1 },
+    { code: "sla", name: "SLA", defaultSpeedCm3h: 18, sortOrder: 2 },
+    { code: "sls", name: "SLS", defaultSpeedCm3h: 15, sortOrder: 3 },
   ];
+  const colorDefs = [
+    { code: "red", name: "Красный" },
+    { code: "orange", name: "Оранжевый" },
+    { code: "yellow", name: "Желтый" },
+    { code: "green", name: "Зеленый" },
+    { code: "blue", name: "Синий" },
+    { code: "indigo", name: "Индиго" },
+    { code: "violet", name: "Фиолетовый" },
+  ];
+  const thicknesses = [0.1, 0.2, 0.3];
+  const materialDefs = [
+    { code: "pla", name: "PLA", unit: "g", densityGcm3: 1.24, basePricePerCm3: 36 },
+    { code: "abs", name: "ABS", unit: "g", densityGcm3: 1.04, basePricePerCm3: 46 },
+    { code: "petg", name: "PETG", unit: "g", densityGcm3: 1.27, basePricePerCm3: 52 },
+    { code: "resin", name: "Resin", unit: "ml", densityGcm3: 1.1, basePricePerCm3: 92 },
+    { code: "nylon", name: "Nylon", unit: "g", densityGcm3: 1.15, basePricePerCm3: 64 },
+  ];
+
+  const techPriceK = { fdm: 1.0, sla: 1.35, sls: 1.55 };
+  const techStockK = { fdm: 1.2, sla: 1.0, sls: 0.8 };
+  const thicknessDelta = { 0.1: 1.18, 0.2: 1.0, 0.3: 0.88 };
+
+  const rows = [];
+
+  technologyDefs.forEach((tech) => {
+    rows.push({
+      itemType: "technology",
+      code: `tech-${tech.code}`,
+      name: tech.name,
+      technologyCode: tech.code,
+      unit: "service",
+      stockQty: 0,
+      pricePerCm3: 0,
+      lowStockThreshold: 0,
+      stopStockThreshold: 0,
+      sortOrder: tech.sortOrder,
+      meta: { defaultSpeedCm3h: tech.defaultSpeedCm3h },
+    });
+  });
+
+  let sort = 10;
+  technologyDefs.forEach((tech) => {
+    materialDefs.forEach((material) => {
+      colorDefs.forEach((color) => {
+        thicknesses.forEach((thickness) => {
+          const price = Math.round(material.basePricePerCm3 * (techPriceK[tech.code] || 1) * (thicknessDelta[String(thickness)] || 1));
+          const baseStock = Math.round(9000 * (techStockK[tech.code] || 1));
+          rows.push({
+            itemType: "material_variant",
+            code: `${tech.code}-${material.code}-${color.code}-${String(thickness).replace(".", "")}`,
+            name: `${tech.name} ${color.name} ${String(thickness).replace(".", ".")}мм`,
+            technologyCode: tech.code,
+            materialCode: material.code,
+            colorCode: color.code,
+            thicknessMm: thickness,
+            unit: material.unit,
+            stockQty: baseStock,
+            pricePerCm3: price,
+            lowStockThreshold: Math.round(baseStock * 0.4),
+            stopStockThreshold: Math.round(baseStock * 0.2),
+            sortOrder: sort++,
+            meta: {
+              displayName: `${tech.name} / ${material.name} / ${color.name} / ${thickness} мм`,
+              materialName: material.name,
+              colorName: color.name,
+              densityGcm3: material.densityGcm3,
+              defaultSpeedCm3h: tech.defaultSpeedCm3h,
+            },
+          });
+        });
+      });
+    });
+  });
 
   for (const row of rows) {
     await client.query(

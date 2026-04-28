@@ -57,7 +57,7 @@
         .map(
           (item) => `
       <tr>
-        <td>${item.id}</td>
+        <td>${item.shortId || item.id}</td>
         <td>${item.technologyCode || "—"}</td>
         <td>${item.materialCode || "—"}</td>
         <td>${item.colorCode || "—"}</td>

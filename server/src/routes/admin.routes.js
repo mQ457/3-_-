@@ -920,6 +920,7 @@ router.get("/warehouse/items", async (_req, res, next) => {
           };
         })(),
         id: row.id,
+        shortId: String(row.code || row.id || "").slice(0, 20),
         itemType: row.item_type,
         code: row.code,
         name: row.name,

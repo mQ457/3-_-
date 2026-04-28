@@ -24,7 +24,7 @@
     const filtered = items.filter((item) => {
       const byText =
         !text ||
-        [item.id, item.code, item.name, item.materialCode, item.colorCode, item.technologyCode].join(" ").toLowerCase().includes(text);
+        [item.shortId, item.id, item.code, item.name, item.materialCode, item.colorCode, item.technologyCode].join(" ").toLowerCase().includes(text);
       return item.itemType === "material_variant" && byText;
     });
 
@@ -37,7 +37,7 @@
       .map(
         (item) => `
       <tr>
-        <td>${esc(item.id)}</td>
+        <td>${esc(item.shortId || item.id)}</td>
         <td><input value="${esc(item.technologyCode)}" data-tech-id="${item.id}" /></td>
         <td><input value="${esc(item.materialCode)}" data-material-id="${item.id}" /></td>
         <td><input value="${esc(item.colorCode)}" data-color-id="${item.id}" /></td>
@@ -91,7 +91,7 @@
     const accountingItems = items.filter((item) => {
       const byText =
         !accText ||
-        [item.id, item.materialCode, item.colorCode, item.technologyCode, item.code].join(" ").toLowerCase().includes(accText);
+        [item.shortId, item.id, item.materialCode, item.colorCode, item.technologyCode, item.code].join(" ").toLowerCase().includes(accText);
       return item.itemType === "material_variant" && byText;
     });
     accountingBody.innerHTML =
@@ -101,7 +101,7 @@
             .map(
               (item) => `
       <tr>
-        <td>${esc(item.id)}</td>
+        <td>${esc(item.shortId || item.id)}</td>
         <td>${esc(item.technologyCode)}</td>
         <td>${esc(item.materialCode)}</td>
         <td>${esc(item.colorCode)}</td>

@@ -179,16 +179,8 @@
   }
 
   function wireCabinetLink() {
-    cabinetLink?.addEventListener("click", async (event) => {
-      event.preventDefault();
-      try {
-        const user = await ensureAuthForReview();
-        if (!user) return;
-        window.location.href = user.role === "admin" ? "admin.html" : "profile.html";
-      } catch {
-        window.location.href = "login.html";
-      }
-    });
+    // Ссылка работает через href в HTML, JS-перехват не нужен.
+    if (!cabinetLink) return;
   }
 
   function wireSubmit() {

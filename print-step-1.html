@@ -10,7 +10,7 @@
   <body class="bg-print">
     <header class="landing-header">
       <div class="container landing-header__inner">
-        <div class="landing-brand">3Д Печать</div>
+        <a class="landing-brand" href="landing.html" aria-label="На главную">3Д Печать</a>
 
         <div class="landing-header__actions">
           <a class="btn btn-ghost landing-header__btn" href="print-step-3.html" role="button">Заказать</a>
@@ -92,17 +92,16 @@
 
           <form action="#" method="post" class="config-row">
             <label class="field">
-              <span class="label">Выберите материал:</span>
-              <select class="select" name="material">
-                <option value="tr">ТРР</option>
-                <option value="pla">PLA</option>
+              <span class="label">Выберите технологию:</span>
+              <select class="select" name="tech">
+                <option value="tech1">Технология</option>
               </select>
             </label>
 
             <label class="field">
-              <span class="label">Выберите технологию:</span>
-              <select class="select" name="tech">
-                <option value="tech1">Технология</option>
+              <span class="label">Выберите материал:</span>
+              <select class="select" name="material">
+                <option value="">Сначала выберите технологию</option>
               </select>
             </label>
 
@@ -116,7 +115,7 @@
             <div class="two-cols">
               <label class="field">
                 <span class="label">Количество:</span>
-                <input class="input" type="number" name="qty" value="10" min="1" />
+                <input class="input" type="number" name="qty" value="1" min="1" />
               </label>
               <label class="field">
                 <span class="label">Толщина:</span>
@@ -129,7 +128,7 @@
 
             <div class="price-line">
               <span>Предварительная цена:</span>
-              <span class="sum">6000 ₽</span>
+              <span class="sum">0 ₽</span>
             </div>
 
             <div class="print-actions">
@@ -143,7 +142,7 @@
     <footer class="site-footer">
       <div class="container site-footer__inner">
         <div>
-          <div class="site-footer__brand">3Д Печать</div>
+          <a class="site-footer__brand" href="landing.html" aria-label="На главную">3Д Печать</a>
           <div class="site-footer__text">
             Изготавливаем 3Д модели и печатаем по вашим файлам. Плейсхолдер текста — подставишь
             описание и контакты.

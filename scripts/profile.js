@@ -4,23 +4,30 @@
   const statusEl = document.getElementById("profile-status");
   const supportForm = document.getElementById("support-form");
   const supportStatus = document.getElementById("support-status");
-  const supportThreads = document.getElementById("support-threads");
   const supportChat = document.getElementById("support-chat");
-  const supportChatTitle = document.getElementById("support-chat-title");
   const supportMessages = document.getElementById("support-messages");
   const supportReplyForm = document.getElementById("support-reply-form");
+  const supportChatClosedNote = document.getElementById("support-chat-closed-note");
   let activeThreadId = "";
-  function supportStatusLabel(status) {
-    const key = String(status || "").trim();
-    if (key === "open") return "Отвечает оператор";
-    if (key === "closed" || key === "bot_active") return "Отвечает ИИ";
-    return "В обработке";
-  }
+  let activeThreadStatus = "";
+  let realtimeSocket = null;
+  let reconnectTimer = null;
+  let pollingTimer = null;
 
   function senderMeta(senderType) {
-    if (senderType === "admin") return { name: "Поддержка", bg: "#fff1ea" };
-    if (senderType === "bot") return { name: "ИИ-помощник", bg: "#eefcf3" };
-    return { name: "Вы", bg: "#f4f7ff" };
+    if (senderType === "admin") return { name: "Поддержка", roleClass: "is-admin" };
+    if (senderType === "bot") return { name: "ИИ-помощник", roleClass: "is-bot" };
+    return { name: "Вы", roleClass: "is-user" };
+  }
+
+  function syncReplyFormVisibility() {
+    if (!supportReplyForm) return;
+    const canReply = Boolean(activeThreadId) && activeThreadStatus !== "closed";
+    supportReplyForm.style.display = canReply ? "block" : "none";
+    if (supportChatClosedNote) {
+      const isClosed = Boolean(activeThreadId) && activeThreadStatus === "closed";
+      supportChatClosedNote.style.display = isClosed ? "block" : "none";
+    }
   }
 
   const sidebarName = document.getElementById("sidebar-name");
@@ -95,36 +102,83 @@
   });
 
   async function loadThreads() {
-    if (!supportThreads) return;
     try {
       const data = await API.request("/profile/support/threads", { method: "GET" });
       const threads = data.threads || [];
       if (threads.length === 0) {
-        supportThreads.innerHTML = '<div class="muted-small">Обращений пока нет.</div>';
-        supportChat.style.display = "none";
+        activeThreadId = "";
+        activeThreadStatus = "";
+        supportMessages.innerHTML = '<div class="muted-small">Обращений пока нет. Напишите вопрос выше, и чат появится здесь.</div>';
+        supportChat.style.display = "block";
+        syncReplyFormVisibility();
         return;
       }
-      supportThreads.innerHTML = threads
-        .map(
-          (thread) => `
-          <div data-thread-id="${thread.id}" style="padding:10px 12px;border:1px solid #e8eaf2;border-radius:10px;margin-top:8px;cursor:pointer;">
-            <div style="font-weight:700;">${thread.subject}</div>
-            <div class="muted-small">Статус: ${supportStatusLabel(thread.status)} | ${new Date(thread.lastMessageAt).toLocaleString("ru-RU")}</div>
-          </div>`
-        )
-        .join("");
       if (!activeThreadId) {
         activeThreadId = threads[0].id;
       }
-      supportThreads.querySelectorAll("[data-thread-id]").forEach((node) => {
-        node.addEventListener("click", async () => {
-          activeThreadId = node.getAttribute("data-thread-id");
-          await loadMessages();
-        });
-      });
+      if (!threads.some((thread) => thread.id === activeThreadId)) {
+        activeThreadId = threads[0].id;
+      }
+      const activeThread = threads.find((thread) => thread.id === activeThreadId) || threads[0];
+      activeThreadStatus = String(activeThread?.status || "");
+      syncReplyFormVisibility();
       await loadMessages();
     } catch (_error) {
-      supportThreads.innerHTML = "";
+      supportMessages.innerHTML = "";
+    }
+  }
+
+  function startFallbackPolling() {
+    if (pollingTimer) return;
+    pollingTimer = setInterval(() => {
+      loadThreads().catch(() => {});
+    }, 25000);
+  }
+
+  function stopFallbackPolling() {
+    if (!pollingTimer) return;
+    clearInterval(pollingTimer);
+    pollingTimer = null;
+  }
+
+  function queueReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectRealtime();
+    }, 2000);
+  }
+
+  function connectRealtime() {
+    try {
+      if (realtimeSocket && (realtimeSocket.readyState === WebSocket.OPEN || realtimeSocket.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      realtimeSocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      realtimeSocket.addEventListener("open", () => {
+        stopFallbackPolling();
+      });
+      realtimeSocket.addEventListener("message", (event) => {
+        let data = null;
+        try {
+          data = JSON.parse(event.data || "{}");
+        } catch (_error) {
+          data = null;
+        }
+        if (!data || data.event !== "support:updated") return;
+        loadThreads().catch(() => {});
+      });
+      realtimeSocket.addEventListener("close", () => {
+        startFallbackPolling();
+        queueReconnect();
+      });
+      realtimeSocket.addEventListener("error", () => {
+        startFallbackPolling();
+      });
+    } catch (_error) {
+      startFallbackPolling();
+      queueReconnect();
     }
   }
 
@@ -134,14 +188,13 @@
       const data = await API.request(`/profile/support/threads/${activeThreadId}/messages`, { method: "GET" });
       const messages = data.messages || [];
       supportChat.style.display = "block";
-      supportChatTitle.textContent = `Чат обращения #${activeThreadId.slice(0, 8)}`;
       supportMessages.innerHTML = messages
         .map((msg) => {
           const sender = senderMeta(msg.senderType);
           return `
-          <div style="margin-bottom:6px;padding:8px;border-radius:8px;background:${sender.bg};">
-            <div class="muted-small">${sender.name} • ${new Date(msg.createdAt).toLocaleString("ru-RU")}</div>
-            <div>${msg.message}</div>
+          <div class="support-chat__message ${sender.roleClass}">
+            <div class="support-chat__meta">${sender.name} • ${new Date(msg.createdAt).toLocaleString("ru-RU")}</div>
+            <div class="support-chat__text">${msg.message}</div>
           </div>`;
         })
         .join("");
@@ -166,6 +219,7 @@
       supportStatus.textContent = "Сообщение отправлено.";
       supportForm.reset();
       activeThreadId = "";
+      activeThreadStatus = "";
       await loadThreads();
     } catch (error) {
       supportStatus.textContent = error.message;
@@ -175,7 +229,7 @@
 
   supportReplyForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!activeThreadId) return;
+    if (!activeThreadId || activeThreadStatus === "closed") return;
     const message = String(supportReplyForm.elements.message.value || "").trim();
     if (!message) return;
     try {
@@ -189,12 +243,19 @@
     } catch (_error) {}
   });
 
+  supportReplyForm?.elements?.message?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey) return;
+    event.preventDefault();
+    supportReplyForm.requestSubmit();
+  });
+
   API.bootstrapUser()
     .then(() => {
       API.wireLogout();
       loadProfile();
       loadThreads();
-      setInterval(loadMessages, 5000);
+      connectRealtime();
+      startFallbackPolling();
     })
     .catch((error) => {
       if (error.status === 401) {

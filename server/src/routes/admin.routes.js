@@ -10,10 +10,41 @@ const {
   appendThreadMessage,
 } = require("../domain/order-chat");
 const { notificationUpload } = require("../domain/notification-upload");
+const { publish } = require("../realtime");
+const { sendEmailOnce, isValidEmail, getAppSetting, setAppSetting } = require("../domain/email");
 
 const router = express.Router();
 
 router.use(requireAdmin);
+
+const localRateStore = new Map();
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function isAllowedByRateLimit(key, limit, windowMs) {
+  const now = Date.now();
+  const row = localRateStore.get(key);
+  if (!row || row.resetAt <= now) {
+    localRateStore.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (row.count >= limit) return false;
+  row.count += 1;
+  return true;
+}
+
+function normalizeMessage(value, max = 2000) {
+  return String(value || "")
+    .replace(/\u0000/g, "")
+    .trim()
+    .slice(0, max);
+}
 
 router.get("/dashboard", async (_req, res, next) => {
   try {
@@ -85,6 +116,94 @@ router.get("/nav-updates", async (req, res, next) => {
         reviews: Number(reviewsRes.rows[0]?.count || 0),
         notifications: Number(notificationsRes.rows[0]?.count || 0),
       },
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/email-settings", async (_req, res, next) => {
+  try {
+    const directorEmail = await getAppSetting("director_email", "");
+    res.json({ ok: true, directorEmail });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/email-settings", async (req, res, next) => {
+  try {
+    const directorEmail = String(req.body?.directorEmail || "").trim().toLowerCase();
+    if (!directorEmail || !isValidEmail(directorEmail)) {
+      return res.status(400).json({ error: "VALIDATION_ERROR", message: "Введите корректный email директора." });
+    }
+    await setAppSetting("director_email", directorEmail);
+    return res.json({ ok: true, directorEmail });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/email-report/send", async (req, res, next) => {
+  try {
+    const rateKey = `report:${req.auth.userId || "admin"}`;
+    const directorEmail = String(await getAppSetting("director_email", "")).trim().toLowerCase();
+    if (!directorEmail || !isValidEmail(directorEmail)) {
+      return res.status(400).json({ error: "VALIDATION_ERROR", message: "Сначала укажите email директора в настройках." });
+    }
+
+    const periodDays = Math.max(1, Math.min(30, Number(req.body?.periodDays || 1)));
+    const [ordersRes, revenueRes, usersRes, supportRes] = await Promise.all([
+      db.query("SELECT COUNT(*) AS count FROM orders WHERE created_at >= NOW() - ($1::text || ' days')::interval", [String(periodDays)]),
+      db.query("SELECT COALESCE(SUM(total_amount), 0) AS amount FROM orders WHERE created_at >= NOW() - ($1::text || ' days')::interval", [String(periodDays)]),
+      db.query("SELECT COUNT(*) AS count FROM users WHERE role = 'user' AND created_at >= NOW() - ($1::text || ' days')::interval", [String(periodDays)]),
+      db.query("SELECT COUNT(*) AS count FROM support_threads WHERE created_at >= NOW() - ($1::text || ' days')::interval", [String(periodDays)]),
+    ]);
+
+    const stats = {
+      orders: Number(ordersRes.rows[0]?.count || 0),
+      revenue: Number(revenueRes.rows[0]?.amount || 0),
+      users: Number(usersRes.rows[0]?.count || 0),
+      support: Number(supportRes.rows[0]?.count || 0),
+    };
+    const periodLabel = periodDays === 1 ? "за сегодня" : `за ${periodDays} дн.`;
+    const html = `
+      <h2>Отчет для директора ${escapeHtml(periodLabel)}</h2>
+      <ul>
+        <li>Заказы: <b>${stats.orders}</b></li>
+        <li>Выручка: <b>${stats.revenue} RUB</b></li>
+        <li>Новые пользователи: <b>${stats.users}</b></li>
+        <li>Обращения в поддержку: <b>${stats.support}</b></li>
+      </ul>
+    `;
+    const text = `Отчет ${periodLabel}: заказы ${stats.orders}, выручка ${stats.revenue} RUB, новые пользователи ${stats.users}, обращения ${stats.support}.`;
+    const minuteBucket = new Date().toISOString().slice(0, 16);
+    const eventKey = `director_report:${periodDays}:${minuteBucket}:${req.auth.userId || "admin"}`;
+    const mailResult = await sendEmailOnce({
+      eventKey,
+      to: directorEmail,
+      subject: `Отчет 3Д Печать ${periodLabel}`,
+      html,
+      text,
+      templateType: "director_report",
+      actorId: req.auth.userId,
+      rateLimitKey: rateKey,
+      rateLimitCount: 999,
+      rateLimitWindowMs: 60000,
+    });
+
+    if (!mailResult.ok && !mailResult.duplicate && !mailResult.disabled) {
+      const reason = String(mailResult.reason || mailResult.error || "unknown_error");
+      return res.status(502).json({
+        error: "EMAIL_SEND_FAILED",
+        message: `Не удалось отправить отчет на email директора (${reason}).`,
+      });
+    }
+    return res.json({
+      ok: true,
+      duplicate: Boolean(mailResult.duplicate),
+      disabled: Boolean(mailResult.disabled),
+      reason: mailResult.reason || "",
     });
   } catch (error) {
     return next(error);
@@ -181,7 +300,14 @@ router.patch("/orders/:id", async (req, res, next) => {
     if (!normalizedStatus) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Укажите статус." });
     }
-    const orderRes = await db.query("SELECT id, service_type, status, details_json FROM orders WHERE id = $1 LIMIT 1", [req.params.id]);
+    const orderRes = await db.query(
+      `SELECT o.id, o.user_id, o.order_number, o.service_type, o.status, o.details_json, u.email, u.full_name
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       WHERE o.id = $1
+       LIMIT 1`,
+      [req.params.id]
+    );
     const order = orderRes.rows[0];
     if (!order) {
       return res.status(404).json({ error: "NOT_FOUND", message: "Заказ не найден." });
@@ -242,6 +368,20 @@ router.patch("/orders/:id", async (req, res, next) => {
        WHERE id = $3`,
       [normalizedStatus, JSON.stringify(details), req.params.id]
     );
+    if (fromStatus !== toStatus && isValidEmail(order.email || "")) {
+      await sendEmailOnce({
+        eventKey: `order:${order.id}:status:${toStatus}`,
+        to: order.email,
+        subject: `Статус заказа ${order.order_number || order.id} обновлен`,
+        text: `Здравствуйте, ${order.full_name || "клиент"}.\nСтатус вашего заказа изменен: ${fromStatus} -> ${toStatus}.\nПроверьте детали в личном кабинете: http://localhost:3000/orders.html`,
+        html: `<p>Здравствуйте, ${escapeHtml(order.full_name || "клиент")}.</p><p>Статус вашего заказа обновлен: <b>${escapeHtml(fromStatus)}</b> → <b>${escapeHtml(toStatus)}</b>.</p><p><a href="http://localhost:3000/orders.html">Открыть мои заказы</a></p>`,
+        templateType: "order_status",
+        actorId: req.auth.userId,
+        rateLimitKey: `order-mail:${order.id}`,
+        rateLimitCount: 20,
+        rateLimitWindowMs: 60000,
+      });
+    }
     res.json({ ok: true });
   } catch (error) {
     next(error);
@@ -374,25 +514,30 @@ router.get("/notifications/recipients", async (req, res, next) => {
 router.post("/notifications/send", notificationUpload.single("attachment"), async (req, res, next) => {
   try {
     const userId = String(req.body?.userId || "").trim();
-    const message = String(req.body?.message || "").trim();
+    const message = normalizeMessage(req.body?.message, 2000);
     if (!userId) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Укажите получателя." });
     }
     if (!message) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Введите текст уведомления." });
     }
-    const userRes = await db.query("SELECT id FROM users WHERE id = $1 AND role = 'user' LIMIT 1", [userId]);
+    if (!isAllowedByRateLimit(`promo:${req.auth.userId}:${userId}`, 5, 60000)) {
+      return res.status(429).json({ error: "RATE_LIMITED", message: "Слишком много отправок. Попробуйте позже." });
+    }
+    const userRes = await db.query("SELECT id, email, full_name FROM users WHERE id = $1 AND role = 'user' LIMIT 1", [userId]);
     if (!userRes.rows[0]) {
       return res.status(404).json({ error: "NOT_FOUND", message: "Получатель не найден." });
     }
+    const user = userRes.rows[0];
     const file = req.file;
+    const notificationId = crypto.randomUUID();
     await db.query(
       `INSERT INTO user_notifications (
         id, user_id, admin_id, sender_type, message, file_name, file_path, file_mime, file_size, is_read, created_at
       )
       VALUES ($1, $2, $3, 'admin', $4, $5, $6, $7, $8, 0, datetime('now'))`,
       [
-        crypto.randomUUID(),
+        notificationId,
         userId,
         req.auth.userId,
         message,
@@ -402,6 +547,22 @@ router.post("/notifications/send", notificationUpload.single("attachment"), asyn
         file?.size || null,
       ]
     );
+    if (isValidEmail(user.email || "")) {
+      const promoBucket = Math.floor(Date.now() / 30000);
+      const promoDigest = crypto.createHash("sha1").update(`${userId}:${message}`).digest("hex").slice(0, 16);
+      await sendEmailOnce({
+        eventKey: `promo:${userId}:${promoDigest}:${promoBucket}`,
+        to: user.email,
+        subject: "Новое уведомление от 3Д Печать",
+        text: `${message}\n\nОткройте личный кабинет: http://localhost:3000/profile.html`,
+        html: `<p>${escapeHtml(user.full_name || "Клиент")}, вам пришло новое уведомление:</p><p>${escapeHtml(message)}</p><p><a href="http://localhost:3000/profile.html">Перейти в личный кабинет</a></p>`,
+        templateType: "promo_notification",
+        actorId: req.auth.userId,
+        rateLimitKey: `promo-mail:${req.auth.userId}:${userId}`,
+        rateLimitCount: 5,
+        rateLimitWindowMs: 60000,
+      });
+    }
     res.status(201).json({ ok: true });
   } catch (error) {
     next(error);
@@ -475,7 +636,7 @@ router.get("/support/threads", async (_req, res, next) => {
   try {
     const limit = Math.min(500, Math.max(1, Number(_req.query.limit || 200)));
     const result = await db.query(
-      `SELECT t.id, t.user_id, t.subject, t.status, t.created_at, t.updated_at, t.last_message_at,
+      `SELECT t.id, t.user_id, t.subject, t.status, t.user_visible, t.created_at, t.updated_at, t.last_message_at,
               u.full_name, u.phone, u.email,
               (
                 SELECT sm.sender_type
@@ -497,6 +658,7 @@ router.get("/support/threads", async (_req, res, next) => {
         userId: row.user_id,
         subject: row.subject,
         status: row.status,
+        userVisible: Boolean(row.user_visible),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         lastMessageAt: row.last_message_at,
@@ -540,14 +702,27 @@ router.get("/support/threads/:threadId/messages", async (req, res, next) => {
 
 router.post("/support/threads/:threadId/messages", async (req, res, next) => {
   try {
-    const { message } = req.body || {};
-    if (!String(message || "").trim()) {
+    const message = normalizeMessage(req.body?.message, 2000);
+    if (!message) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Введите сообщение." });
     }
+    if (!isAllowedByRateLimit(`support-admin:${req.auth.userId}:${req.params.threadId}`, 10, 60000)) {
+      return res.status(429).json({ error: "RATE_LIMITED", message: "Слишком много сообщений. Подождите немного." });
+    }
+    const threadMetaRes = await db.query(
+      `SELECT t.user_id, u.email, u.full_name
+       FROM support_threads t
+       LEFT JOIN users u ON u.id = t.user_id
+       WHERE t.id = $1
+       LIMIT 1`,
+      [req.params.threadId]
+    );
+    const threadMeta = threadMetaRes.rows[0];
+    const supportMessageId = crypto.randomUUID();
     await db.query(
       `INSERT INTO support_messages (id, thread_id, sender_type, sender_id, message, created_at)
        VALUES ($1, $2, 'admin', $3, $4, datetime('now'))`,
-      [crypto.randomUUID(), req.params.threadId, req.auth.userId, String(message).trim()]
+      [supportMessageId, req.params.threadId, req.auth.userId, message]
     );
     await db.query(
       `UPDATE support_threads
@@ -556,6 +731,23 @@ router.post("/support/threads/:threadId/messages", async (req, res, next) => {
        WHERE id = $1`,
       [req.params.threadId]
     );
+    publish("support:updated", { threadId: req.params.threadId });
+    if (isValidEmail(threadMeta?.email || "")) {
+      const supportBucket = Math.floor(Date.now() / 20000);
+      const supportDigest = crypto.createHash("sha1").update(`${req.params.threadId}:${message}`).digest("hex").slice(0, 16);
+      await sendEmailOnce({
+        eventKey: `support:${req.params.threadId}:${supportDigest}:${supportBucket}`,
+        to: threadMeta.email,
+        subject: "Новый ответ поддержки",
+        text: `Поддержка ответила: ${message}\n\nОткройте кабинет: http://localhost:3000/profile.html`,
+        html: `<p>${escapeHtml(threadMeta?.full_name || "Клиент")}, поддержка ответила:</p><p>${escapeHtml(message)}</p><p><a href="http://localhost:3000/profile.html">Открыть личный кабинет</a></p>`,
+        templateType: "support_reply",
+        actorId: req.auth.userId,
+        rateLimitKey: `support-mail:${req.params.threadId}`,
+        rateLimitCount: 20,
+        rateLimitWindowMs: 60000,
+      });
+    }
     res.status(201).json({ ok: true });
   } catch (error) {
     next(error);
@@ -565,13 +757,16 @@ router.post("/support/threads/:threadId/messages", async (req, res, next) => {
 router.patch("/support/threads/:threadId", async (req, res, next) => {
   try {
     const { status } = req.body || {};
+    const normalizedStatus = String(status || "open");
     await db.query(
       `UPDATE support_threads
        SET status = $1,
+           user_visible = CASE WHEN $1 = 'closed' THEN 0 ELSE user_visible END,
            updated_at = datetime('now')
        WHERE id = $2`,
-      [String(status || "open"), req.params.threadId]
+      [normalizedStatus, req.params.threadId]
     );
+    publish("support:updated", { threadId: req.params.threadId, status: normalizedStatus });
     res.json({ ok: true });
   } catch (error) {
     next(error);
@@ -835,7 +1030,7 @@ router.post("/options", async (req, res, next) => {
         String(type).trim(),
         String(code).trim(),
         String(name).trim(),
-        Number(priceDelta || 0),
+        Math.round(Number(priceDelta || 0)),
         active === false ? 0 : 1,
         Number(sortOrder || 0),
         meta ? JSON.stringify(meta) : null,
@@ -860,7 +1055,7 @@ router.patch("/options/:id", async (req, res, next) => {
        WHERE id = $6`,
       [
         name != null ? String(name) : null,
-        priceDelta != null ? Number(priceDelta) : null,
+        priceDelta != null ? Math.round(Number(priceDelta)) : null,
         active != null ? (active ? 1 : 0) : null,
         sortOrder != null ? Number(sortOrder) : null,
         meta != null ? JSON.stringify(meta) : null,
@@ -969,7 +1164,7 @@ router.post("/warehouse/items", async (req, res, next) => {
     }
     const stockQty = itemType === "material_variant" ? Number(body.stockQty || 0) : 0;
     const unit = itemType === "material_variant" ? String(body.unit || "g").trim() : "service";
-    const pricePerCm3 = itemType === "material_variant" ? Number(body.pricePerCm3 || 0) : 0;
+    const pricePerCm3 = itemType === "material_variant" ? Math.round(Number(body.pricePerCm3 || 0)) : 0;
     const meta = body.meta != null ? body.meta : null;
     const id = crypto.randomUUID();
     await db.query(
@@ -1043,7 +1238,7 @@ router.patch("/warehouse/items/:id", async (req, res, next) => {
         body.stockQty != null ? Number(body.stockQty) : null,
         body.reservedQty != null ? Number(body.reservedQty) : null,
         body.consumedQty != null ? Number(body.consumedQty) : null,
-        body.pricePerCm3 != null ? Number(body.pricePerCm3) : null,
+        body.pricePerCm3 != null ? Math.round(Number(body.pricePerCm3)) : null,
         body.lowStockThreshold != null ? Number(body.lowStockThreshold) : null,
         body.stopStockThreshold != null ? Number(body.stopStockThreshold) : null,
         body.active != null ? (body.active ? 1 : 0) : null,
@@ -1055,6 +1250,77 @@ router.patch("/warehouse/items/:id", async (req, res, next) => {
     res.json({ ok: true });
   } catch (error) {
     next(error);
+  }
+});
+
+router.patch("/warehouse/materials/:materialCode/sync", async (req, res, next) => {
+  const materialCode = String(req.params.materialCode || "").trim().toLowerCase();
+  if (!materialCode) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Не указан materialCode." });
+  }
+  const body = req.body || {};
+  const hasTotalStock = body.totalStock != null && body.totalStock !== "";
+  const hasPrice = body.pricePerCm3 != null && body.pricePerCm3 !== "";
+  if (!hasTotalStock && !hasPrice) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Укажите totalStock и/или pricePerCm3." });
+  }
+  const totalStock = hasTotalStock ? Math.max(0, Number(body.totalStock || 0)) : null;
+  const nextPrice = hasPrice ? Math.max(0, Math.round(Number(body.pricePerCm3 || 0))) : null;
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const variantsRes = await client.query(
+      `SELECT id, stock_qty
+       FROM print_inventory
+       WHERE item_type = 'material_variant' AND material_code = $1`,
+      [materialCode]
+    );
+    const variants = variantsRes.rows || [];
+    if (!variants.length) {
+      await client.query("COMMIT");
+      return res.json({ ok: true, updated: 0 });
+    }
+
+    if (hasTotalStock) {
+      const currentStock = variants.reduce((sum, row) => sum + Number(row.stock_qty || 0), 0);
+      if (currentStock > 0) {
+        const multiplier = totalStock / currentStock;
+        await client.query(
+          `UPDATE print_inventory
+           SET stock_qty = GREATEST(0, ROUND((stock_qty * $1)::numeric, 2)),
+               updated_at = datetime('now')
+           WHERE item_type = 'material_variant' AND material_code = $2`,
+          [multiplier, materialCode]
+        );
+      } else {
+        const perVariant = variants.length ? Number((totalStock / variants.length).toFixed(2)) : 0;
+        await client.query(
+          `UPDATE print_inventory
+           SET stock_qty = $1,
+               updated_at = datetime('now')
+           WHERE item_type = 'material_variant' AND material_code = $2`,
+          [perVariant, materialCode]
+        );
+      }
+    }
+
+    if (hasPrice) {
+      await client.query(
+        `UPDATE print_inventory
+         SET price_per_cm3 = $1,
+             updated_at = datetime('now')
+         WHERE item_type = 'material_variant' AND material_code = $2`,
+        [nextPrice, materialCode]
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json({ ok: true, updated: variants.length });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return next(error);
+  } finally {
+    client.release();
   }
 });
 

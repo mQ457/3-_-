@@ -167,23 +167,30 @@ async function calculateOrderPrice({ serviceType, material, technology, color, t
     const inventoryRows = await loadPrintInventoryRows();
     const variant = findInventoryVariant(inventoryRows, { technology, material, color, thickness });
     if (!variant) {
-      return Math.max(rule.minPrice, 700);
+      return 0;
     }
     const availableQty = Math.max(0, Number(variant.stockQty || 0) - Number(variant.reservedQty || 0));
     if (availableQty <= 0) {
-      return Math.max(rule.minPrice, 700);
+      return 0;
     }
     const rawVolume = Number(modelVolumeCm3 || 0);
     const volumeCm3 = rawVolume > 0 ? rawVolume : Math.max(1, Number(rule.defaultModelVolumeCm3 || 20));
     const speedCm3h = Math.max(6, Number(variant.meta?.defaultSpeedCm3h || 20));
     const machineHours = volumeCm3 / speedCm3h;
-    const materialCost = volumeCm3 * Math.max(0, Number(variant.pricePerCm3 || 0));
+    const priceMap = await loadPriceMap();
+    const materialPricePerCm3 = Math.max(
+      0,
+      Number(priceMap.get(`material:${String(material || variant.materialCode || "")}`) || variant.pricePerCm3 || 0)
+    );
+    const materialCost = volumeCm3 * materialPricePerCm3;
     const machineCost = machineHours * Math.max(0, Number(rule.machineHourRate || 0));
+    const laborCost = machineHours * Math.max(0, Number(rule.hourRate || 0));
     const base = Math.max(0, Number(rule.baseFee || 0)) + Math.max(0, Number(rule.setupFee || 0));
-    const subtotal = (materialCost + machineCost + base) * quantity;
+    const subtotal = (materialCost + machineCost + laborCost + base) * quantity;
     const wasteK = 1 + Math.max(0, Number(rule.wastePercent || 0)) / 100;
     const supportK = 1 + Math.max(0, Number(rule.supportPercent || 0)) / 100;
-    return Math.max(rule.minPrice, Math.round(subtotal * wasteK * supportK));
+    const totalWithCoefficients = Math.max(0, Math.round(subtotal * wasteK * supportK));
+    return Math.max(totalWithCoefficients, Math.max(0, Number(rule.minPrice || 0)));
   }
 
   const hours = Math.max(0.5, Number(estimatedHours || 1));
@@ -194,8 +201,8 @@ async function calculateOrderPrice({ serviceType, material, technology, color, t
     (priceMap.get(`technology:${technology}`) || 0) +
     (priceMap.get(`color:${color}`) || 0);
   const subtotal = Number(rule.baseFee || 0) + Number(rule.hourRate || 0) * hours * complexityK + extras;
-  const total = subtotal * quantity;
-  return Math.max(rule.minPrice || 500, Math.round(total));
+  const total = Math.max(0, Math.round(subtotal * quantity));
+  return Math.max(total, Math.max(0, Number(rule.minPrice || 0)));
 }
 
 router.get("/options", async (_req, res, next) => {
@@ -219,6 +226,7 @@ router.get("/options", async (_req, res, next) => {
       grouped[row.type].push(item);
     });
     const inventoryRows = await loadPrintInventoryRows();
+    const materialPriceByCode = new Map((grouped.material || []).map((item) => [String(item.code || ""), Number(item.priceDelta || 0)]));
     const activeTechnologies = new Set((grouped.technology || []).filter((item) => item.active).map((item) => item.code));
     const activeMaterials = new Set((grouped.material || []).filter((item) => item.active).map((item) => item.code));
     const activeColors = new Set((grouped.color || []).filter((item) => item.active).map((item) => item.code));
@@ -257,7 +265,7 @@ router.get("/options", async (_req, res, next) => {
         stockQty: Number(row.stockQty || 0),
         reservedQty: Number(row.reservedQty || 0),
         availableQty: Math.max(0, Number(row.stockQty || 0) - Number(row.reservedQty || 0)),
-        pricePerCm3: Number(row.pricePerCm3 || 0),
+        pricePerCm3: Number(materialPriceByCode.get(String(row.materialCode || "")) ?? Number(row.pricePerCm3 || 0)),
         lowStockThreshold: Number(row.lowStockThreshold || 0),
         stopStockThreshold: Number(row.stopStockThreshold || 0),
         name: row.name,
@@ -372,7 +380,10 @@ router.post("/", requireAuth, async (req, res, next) => {
       modelVolumeCm3,
       complexity,
       estimatedHours,
+      initialStatus,
     } = req.body || {};
+    const normalizedInitialStatus = String(initialStatus || "").trim();
+    const orderStatus = normalizedInitialStatus || "Оплачен";
 
     const normalizedServiceType = normalizeServiceType(serviceType);
     if (!normalizedServiceType) {
@@ -486,8 +497,8 @@ router.post("/", requireAuth, async (req, res, next) => {
           created_at, updated_at
        )
        VALUES (
-         $1, $2, $3, $4, $5, 'Оплачен', $6, 'RUB',
-         $7, $8, $9, $10, $11, $12, $13, $14,
+         $1, $2, $3, $4, $5, $6, $7, 'RUB',
+         $8, $9, $10, $11, $12, $13, $14, $15,
          datetime('now'), datetime('now')
        )`,
       [
@@ -496,6 +507,7 @@ router.post("/", requireAuth, async (req, res, next) => {
         orderNumber,
         normalizedServiceType,
         String(serviceName || "Услуга").trim(),
+        orderStatus,
         finalAmount,
         detailsJson,
         String(modelingTask || "").trim() || null,

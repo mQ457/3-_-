@@ -110,7 +110,6 @@
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!hasConsent()) return;
     const payload = getPayload();
     if (!validateCredentials(payload)) return;
     setStatus("Выполняется вход...", false);

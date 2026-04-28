@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Обработка оплаты</title>
+    <link rel="icon" type="image/png" href="image/3D print(1).png">
+    <link rel="stylesheet" href="./site.css" />
+  </head>
+  <body class="processing-page">
+    <main class="processing-wrap" aria-live="polite">
+      <div class="processing-spinner"></div>
+      <div class="processing-text">Обрабатываем оплату...</div>
+      <div class="processing-sub">Пожалуйста, подождите</div>
+      <div id="processing-error" class="processing-error" hidden></div>
+    </main>
+    <script src="scripts/app-bootstrap.js"></script>
+    <script src="scripts/checkout-processing.js"></script>
+  </body>
+</html>

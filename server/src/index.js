@@ -3,11 +3,13 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const { WebSocketServer } = require("ws");
 const authRoutes = require("./routes/auth.routes");
 const profileRoutes = require("./routes/profile.routes");
 const adminRoutes = require("./routes/admin.routes");
 const orderRoutes = require("./routes/order.routes");
 const reviewRoutes = require("./routes/review.routes");
+const { setBroadcaster } = require("./realtime");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -32,7 +34,23 @@ app.get("/", (_req, res) => {
   return res.sendFile(landingPagePath);
 });
 
-app.use(express.static(webRoot));
+app.use(
+  express.static(webRoot, {
+    etag: true,
+    lastModified: true,
+    maxAge: "1h",
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath).toLowerCase();
+      if (ext === ".html") {
+        res.setHeader("Cache-Control", "no-cache");
+        return;
+      }
+      if ([".js", ".css", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".ico", ".woff", ".woff2"].includes(ext)) {
+        res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      }
+    },
+  })
+);
 app.use("/uploads", express.static(path.resolve(__dirname, "..", "uploads")));
 
 app.get("/api/health", (_req, res) => {
@@ -45,8 +63,16 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// Always return the main site page for non-API unknown routes.
-app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+// Resolve pretty URLs like /profile -> /profile.html when file exists.
+app.get(/^\/(?!api(?:\/|$)).*/, (req, res) => {
+  const normalizedPath = decodeURIComponent(String(req.path || "/")).replace(/\\/g, "/");
+  const safePath = normalizedPath.replace(/^\/+/, "");
+  if (safePath) {
+    const htmlCandidate = path.resolve(webRoot, `${safePath}.html`);
+    if (htmlCandidate.startsWith(webRoot) && fs.existsSync(htmlCandidate)) {
+      return res.sendFile(htmlCandidate);
+    }
+  }
   return res.sendFile(landingPagePath);
 });
 
@@ -88,6 +114,33 @@ const server = app.listen(port, () => {
 
     openUrl(`http://localhost:${port}`);
   }
+});
+
+const wsServer = new WebSocketServer({
+  server,
+  path: "/ws",
+});
+
+function broadcast(message) {
+  const serialized = JSON.stringify(message);
+  wsServer.clients.forEach((client) => {
+    if (client.readyState === 1) {
+      client.send(serialized);
+    }
+  });
+}
+
+setBroadcaster((message) => {
+  broadcast(message);
+});
+
+wsServer.on("connection", (socket) => {
+  socket.send(
+    JSON.stringify({
+      event: "connected",
+      timestamp: new Date().toISOString(),
+    })
+  );
 });
 
 if (!isProduction) {

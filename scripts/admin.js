@@ -7,7 +7,13 @@
   const statsRoot = document.getElementById("dashboard-stats");
   const ordersRoot = document.getElementById("dashboard-orders");
   const refreshBtn = document.getElementById("refresh-dashboard");
+  const directorEmailInput = document.getElementById("dashboard-director-email-input");
+  const directorEmailSaveBtn = document.getElementById("dashboard-director-email-save");
+  const directorReportSendBtn = document.getElementById("dashboard-director-report-send");
+  const directorReportDaysInput = document.getElementById("dashboard-director-report-days");
+  const directorEmailStatus = document.getElementById("dashboard-director-email-status");
   const API = window.AdminCommon;
+  let reportCooldownUntil = 0;
 
   function formatDate(value) {
     if (!value) return "—";
@@ -28,6 +34,55 @@
     phoneInput.addEventListener("input", () => {
       phoneInput.value = normalizePhone(phoneInput.value);
     });
+  }
+
+  function setEmailStatus(message, isError = false) {
+    if (!directorEmailStatus) return;
+    directorEmailStatus.textContent = message || "";
+    directorEmailStatus.style.color = isError ? "#ff7676" : "#16a34a";
+  }
+
+  function updateReportButtonState() {
+    if (!directorReportSendBtn) return;
+    const leftMs = Math.max(0, reportCooldownUntil - Date.now());
+    if (!leftMs) {
+      directorReportSendBtn.disabled = false;
+      directorReportSendBtn.textContent = "Отправить отчет директору";
+      return;
+    }
+    directorReportSendBtn.disabled = true;
+    directorReportSendBtn.textContent = `Повтор через ${Math.ceil(leftMs / 1000)}с`;
+  }
+
+  function pulseButton(button) {
+    if (!button) return;
+    button.classList.add("is-pressed");
+    setTimeout(() => button.classList.remove("is-pressed"), 140);
+  }
+
+  async function runWithButtonFeedback(button, loadingText, action) {
+    if (!button) return action();
+    const originalText = button.textContent;
+    pulseButton(button);
+    button.classList.add("is-busy");
+    button.disabled = true;
+    if (loadingText) button.textContent = loadingText;
+    try {
+      return await action();
+    } finally {
+      button.classList.remove("is-busy");
+      if (reportCooldownUntil <= Date.now() || button !== directorReportSendBtn) {
+        button.disabled = false;
+      }
+      button.textContent = originalText;
+    }
+  }
+
+  async function loadEmailSettings() {
+    const data = await API.request("/admin/email-settings");
+    if (directorEmailInput) {
+      directorEmailInput.value = data.directorEmail || "";
+    }
   }
 
   async function renderDashboard() {
@@ -61,6 +116,7 @@
       appBlock.style.display = "grid";
       API.wireLogout();
       await renderDashboard();
+      await loadEmailSettings();
     } catch {
       loginBlock.style.display = "block";
       appBlock.style.display = "none";
@@ -94,7 +150,54 @@
     }
   });
 
-  refreshBtn?.addEventListener("click", renderDashboard);
+  refreshBtn?.addEventListener("click", () => runWithButtonFeedback(refreshBtn, "Обновляем...", renderDashboard));
+  directorEmailSaveBtn?.addEventListener("click", async () => {
+    await runWithButtonFeedback(directorEmailSaveBtn, "Сохраняем...", async () => {
+      try {
+        const directorEmail = String(directorEmailInput?.value || "").trim().toLowerCase();
+        if (!directorEmail) {
+          setEmailStatus("Введите email директора.", true);
+          return;
+        }
+        await API.request("/admin/email-settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ directorEmail }),
+        });
+        setEmailStatus("Email директора сохранен.");
+      } catch (error) {
+        setEmailStatus(error.message || "Ошибка сохранения email.", true);
+      }
+    });
+  });
+  directorReportSendBtn?.addEventListener("click", async () => {
+    await runWithButtonFeedback(directorReportSendBtn, "Отправляем...", async () => {
+      try {
+        if (Date.now() < reportCooldownUntil) return;
+        const periodDays = Math.max(1, Math.min(30, Number(directorReportDaysInput?.value || 1)));
+        setEmailStatus("Отправляем отчет...");
+        const response = await API.request("/admin/email-report/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ periodDays }),
+        });
+        reportCooldownUntil = Date.now() + 60000;
+        updateReportButtonState();
+        if (response.duplicate) {
+          setEmailStatus("Отчет уже отправлялся недавно, дубль заблокирован.");
+        } else if (response.disabled) {
+          setEmailStatus("EMAIL_ENABLED выключен, отправка пропущена.", true);
+        } else {
+          setEmailStatus("Отчет отправлен на email директора.");
+        }
+      } catch (error) {
+        reportCooldownUntil = 0;
+        directorReportSendBtn.disabled = false;
+        setEmailStatus(error.message || "Не удалось отправить отчет.", true);
+      }
+    });
+  });
+  setInterval(updateReportButtonState, 1000);
   setupPhoneValidation();
   tryOpenAdmin();
 })();

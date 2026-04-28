@@ -65,9 +65,6 @@
                 <th>Код</th>
                 <th>Название</th>
                 <th>Цена за см3</th>
-                <th>Остаток</th>
-                <th>Ед.</th>
-                <th>Индикатор</th>
                 <th>Сохранить</th>
                 <th>Удалить</th>
               </tr>
@@ -81,6 +78,26 @@
         </div>
         <div class="actions" style="margin-top:10px;">
           <button class="btn-primary" id="warehouse-material-add">Добавить материал</button>
+        </div>
+      </section>
+
+      <section class="admin-card" style="margin-top:12px;">
+        <div class="admin-top" style="margin-bottom:8px;">
+          <h3 style="margin:0;">Полное ценообразование услуг</h3>
+          <div class="muted-small">Редактирование значений в 3-й колонке</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Услуга</th>
+                <th>Параметр</th>
+                <th>Значение</th>
+                <th>Сохранить</th>
+              </tr>
+            </thead>
+            <tbody id="warehouse-pricing-body"></tbody>
+          </table>
         </div>
       </section>
 

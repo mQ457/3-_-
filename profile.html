@@ -95,13 +95,11 @@
                 </div>
                 <div id="support-status" class="muted-small" style="margin-top:10px;" aria-live="polite"></div>
               </form>
-              <div id="support-threads" style="margin-top:12px;"></div>
-              <div id="support-chat" style="margin-top:10px;display:none;">
-                <div id="support-chat-title" class="muted-small" style="margin-bottom:8px;"></div>
-                <div id="support-messages" style="max-height:180px;overflow:auto;border:1px solid #e8eaf2;border-radius:10px;padding:8px;"></div>
+              <div id="support-chat" class="support-chat">
+                <div id="support-messages" class="support-chat__messages"></div>
+                <div id="support-chat-closed-note" class="support-chat__closed-note" style="display:none;">Чат закрыт консультантом.</div>
                 <form id="support-reply-form" style="margin-top:8px;">
-                  <textarea class="input" name="message" rows="3" placeholder="Напишите ответ в чат"></textarea>
-                  <button class="btn btn-ghost" type="submit" style="margin-top:8px;">Отправить в чат</button>
+                  <textarea class="input support-chat__input" name="message" rows="3" placeholder="Напишите ответ в чат"></textarea>
                 </form>
               </div>
             </section>

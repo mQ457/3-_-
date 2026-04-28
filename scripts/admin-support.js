@@ -11,6 +11,9 @@
   const filterStatus = document.getElementById("support-filter-status");
   let selectedThreadId = "";
   let allThreads = [];
+  let realtimeSocket = null;
+  let reconnectTimer = null;
+  let pollingTimer = null;
 
   function statusLabel(status) {
     const key = String(status || "").trim();
@@ -94,6 +97,60 @@
     renderThreads();
   }
 
+  function startFallbackPolling() {
+    if (pollingTimer) return;
+    pollingTimer = setInterval(() => {
+      loadThreads().catch(() => {});
+    }, 25000);
+  }
+
+  function stopFallbackPolling() {
+    if (!pollingTimer) return;
+    clearInterval(pollingTimer);
+    pollingTimer = null;
+  }
+
+  function queueReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectRealtime();
+    }, 2000);
+  }
+
+  function connectRealtime() {
+    try {
+      if (realtimeSocket && (realtimeSocket.readyState === WebSocket.OPEN || realtimeSocket.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      realtimeSocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      realtimeSocket.addEventListener("open", () => {
+        stopFallbackPolling();
+      });
+      realtimeSocket.addEventListener("message", (event) => {
+        let data = null;
+        try {
+          data = JSON.parse(event.data || "{}");
+        } catch (_error) {
+          data = null;
+        }
+        if (!data || data.event !== "support:updated") return;
+        loadThreads().catch(() => {});
+      });
+      realtimeSocket.addEventListener("close", () => {
+        startFallbackPolling();
+        queueReconnect();
+      });
+      realtimeSocket.addEventListener("error", () => {
+        startFallbackPolling();
+      });
+    } catch (_error) {
+      startFallbackPolling();
+      queueReconnect();
+    }
+  }
+
   formEl?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!selectedThreadId) return;
@@ -137,7 +194,8 @@
       await API.ensureAdmin();
       API.wireLogout();
       await loadThreads();
-      setInterval(loadThreads, 5000);
+      connectRealtime();
+      startFallbackPolling();
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
         window.location.href = "admin.html";

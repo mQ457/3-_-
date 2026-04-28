@@ -40,6 +40,24 @@
         <h2 style="margin:0;">Дашборд</h2>
         <div data-admin-name></div>
       </div>
+      <section class="admin-card" style="margin-bottom:10px;">
+        <h3 style="margin-top:0;">Email и отчетность</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <label style="display:flex;flex-direction:column;gap:6px;min-width:300px;">
+            <span class="muted-small">Email директора</span>
+            <input class="input" id="dashboard-director-email-input" type="email" placeholder="director@company.com" />
+          </label>
+          <button class="btn-secondary" id="dashboard-director-email-save" type="button">Сохранить email</button>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <label style="display:flex;flex-direction:column;gap:6px;min-width:170px;">
+            <span class="muted-small">Период (дней)</span>
+            <input class="input" id="dashboard-director-report-days" type="number" min="1" max="30" value="1" />
+          </label>
+          <button class="btn-secondary" id="dashboard-director-report-send" type="button">Отправить отчет директору</button>
+        </div>
+        <div class="muted-small" id="dashboard-director-email-status" style="margin-top:8px;" aria-live="polite"></div>
+      </section>
       <section class="admin-card">
         <div class="row" id="dashboard-stats"></div>
       </section>

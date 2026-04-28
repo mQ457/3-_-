@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS support_threads (
   user_id TEXT NOT NULL,
   subject TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'open',
+  user_visible INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -201,6 +202,24 @@ CREATE TABLE IF NOT EXISTS reviews (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS email_delivery_log (
+  id TEXT PRIMARY KEY,
+  event_key TEXT NOT NULL UNIQUE,
+  recipient TEXT NOT NULL,
+  template_type TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  actor_id TEXT,
+  error_message TEXT,
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
@@ -219,6 +238,8 @@ CREATE INDEX IF NOT EXISTS idx_user_notifications_unread ON user_notifications(u
 CREATE INDEX IF NOT EXISTS idx_user_notifications_created_at ON user_notifications(created_at);
 CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at);
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_delivery_recipient ON email_delivery_log(recipient);
+CREATE INDEX IF NOT EXISTS idx_email_delivery_status ON email_delivery_log(status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_service_options_unique ON service_options(type, code);
 CREATE INDEX IF NOT EXISTS idx_print_inventory_type_active ON print_inventory(item_type, active);
 CREATE INDEX IF NOT EXISTS idx_print_inventory_tech ON print_inventory(technology_code);
@@ -228,3 +249,5 @@ CREATE INDEX IF NOT EXISTS idx_print_inventory_sort ON print_inventory(sort_orde
 ALTER TABLE print_inventory ADD COLUMN IF NOT EXISTS consumed_qty NUMERIC NOT NULL DEFAULT 0;
 ALTER TABLE print_inventory ADD COLUMN IF NOT EXISTS low_stock_threshold NUMERIC NOT NULL DEFAULT 1000;
 ALTER TABLE print_inventory ADD COLUMN IF NOT EXISTS stop_stock_threshold NUMERIC NOT NULL DEFAULT 300;
+ALTER TABLE support_threads ADD COLUMN IF NOT EXISTS user_visible INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE email_delivery_log ADD COLUMN IF NOT EXISTS actor_id TEXT;

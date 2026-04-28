@@ -92,7 +92,7 @@ img {
 
 .muted-small {
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 700;
   font-size: 12px;
   line-height: 1.35;
 }
@@ -667,6 +667,7 @@ img {
   display: flex;
   align-items: flex-start;
   justify-content: center;
+  --step-gap: 22px;
   gap: 22px;
   margin: 18px 0 18px;
 }
@@ -683,10 +684,10 @@ img {
 .step:not(:last-child)::after {
   content: "";
   position: absolute;
-  right: -22px;
-  top: 18px;
+  left: calc(50% + 17px);
+  top: 17px;
   height: 2px;
-  width: 44px;
+  width: calc(100% + var(--step-gap) - 34px);
   background: rgba(0, 0, 0, .08);
 }
 
@@ -1359,6 +1360,79 @@ button.model-panel__file-name {
   justify-content: flex-start;
 }
 
+.support-chat {
+  margin-top: 12px;
+}
+
+.support-chat__messages {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #e8eaf2;
+  border-radius: 10px;
+  padding: 8px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.support-chat__input {
+  resize: vertical;
+}
+
+.support-chat__message {
+  max-width: 78%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.support-chat__message.is-user {
+  margin-left: auto;
+  background: rgba(234, 77, 58, .10);
+  border-color: rgba(234, 77, 58, .20);
+}
+
+.support-chat__message.is-admin {
+  margin-right: auto;
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+.support-chat__message.is-bot {
+  margin-right: auto;
+  background: #eefcf3;
+  border-color: #cdeedb;
+}
+
+.support-chat__meta {
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(15, 23, 42, .62);
+  font-weight: 800;
+}
+
+.support-chat__text {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #1f2937;
+  font-weight: 700;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.support-chat__closed-note {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .06);
+  border: 1px solid rgba(15, 23, 42, .12);
+  color: rgba(15, 23, 42, .72);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .profile-support .support-select {
   max-width: 420px;
 }
@@ -1615,6 +1689,108 @@ button.model-panel__file-name {
   margin-top: 14px;
   display: flex;
   justify-content: center;
+}
+
+.checkout-cards-box {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 12px;
+}
+
+.checkout-cards-head {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 900;
+  color: rgba(0, 0, 0, .7);
+}
+
+.checkout-cards-head .btn {
+  min-height: 30px;
+  padding: 0;
+}
+
+.checkout-cards-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 4px;
+}
+
+.checkout-card-chip {
+  border: 1px solid rgba(0, 0, 0, .14);
+  background: #fff;
+  border-radius: 12px;
+  min-width: 150px;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.checkout-card-chip.is-active {
+  border-color: rgba(234, 77, 58, .9);
+  box-shadow: 0 0 0 2px rgba(234, 77, 58, .2) inset;
+}
+
+.checkout-card-chip__mask {
+  font-weight: 900;
+}
+
+.checkout-card-chip__meta {
+  color: rgba(0, 0, 0, .55);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.processing-page {
+  margin: 0;
+  min-height: 100vh;
+  background: #f6f6f7;
+}
+
+.processing-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  place-content: center;
+  gap: 10px;
+}
+
+.processing-spinner {
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  border: 4px solid rgba(0, 0, 0, .1);
+  border-top-color: rgba(234, 77, 58, .95);
+  animation: processing-spin 0.8s linear infinite;
+}
+
+.processing-text {
+  font-weight: 1000;
+  color: rgba(0, 0, 0, .78);
+}
+
+.processing-sub {
+  color: rgba(0, 0, 0, .55);
+  font-weight: 800;
+}
+
+.processing-error {
+  margin-top: 8px;
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+@keyframes processing-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .login-back {
@@ -3776,6 +3952,7 @@ button.model-panel__file-name {
     justify-content: flex-start;
     overflow-x: auto;
     padding-bottom: 6px;
+    --step-gap: 14px;
     gap: 14px;
     scrollbar-width: thin;
   }
@@ -3786,8 +3963,7 @@ button.model-panel__file-name {
   }
 
   .step:not(:last-child)::after {
-    width: 28px;
-    right: -14px;
+    width: calc(100% + var(--step-gap) - 34px);
   }
 
   .orders-card {

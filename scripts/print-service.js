@@ -10,7 +10,6 @@
   const form = document.querySelector("form.config-row");
   const sumEl = document.querySelector(".sum");
   const volumeEl = document.getElementById("model-volume-value");
-  const pricingHintEl = document.getElementById("pricing-hint");
   const checkoutLinks = document.querySelectorAll('a[href="checkout.html"]');
   let uploadedFile = null;
   let localModelFile = null;
@@ -18,7 +17,7 @@
   let modelVolumeCm3 = 0;
   let selectedPrintVariant = null;
   let printInventory = { technologies: [], variants: [] };
-  let printOptionMaps = { technology: new Map(), material: new Map(), color: new Map() };
+  let printOptionMaps = { technology: new Map(), material: new Map(), color: new Map(), thickness: new Map() };
 
   const PRINT_TECH_TEMPLATES = [
     { code: "fdm", name: "FDM / FFF", materials: ["pla", "abs", "petg", "tpu", "nylon"], thicknesses: [0.05, 0.1, 0.2, 0.3, 0.5] },
@@ -109,22 +108,18 @@
         Number(variant.thicknessMm || 0) === thickness
     );
     selectedPrintVariant = candidates[0] || null;
-    if (pricingHintEl) {
-      if (!selectedPrintVariant) {
-        pricingHintEl.textContent = "Выберите технологию, материал, цвет и толщину.";
-      } else {
-        pricingHintEl.textContent = `Остаток: ${formatNumberRu(selectedPrintVariant.availableQty, 0)} ${selectedPrintVariant.unit}. Цена материала: ${formatNumberRu(
-          selectedPrintVariant.pricePerCm3,
-          0
-        )} ₽/см3.`;
-      }
-    }
   }
 
   function fillSelect(select, items, mapItem) {
     if (!select) return;
     const html = items.map(mapItem).join("");
     select.innerHTML = html || '<option value="">Нет доступных вариантов</option>';
+  }
+
+  function formatOptionName(value) {
+    const raw = String(value || "").replace(/[_-]+/g, " ").trim();
+    if (!raw) return "";
+    return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
   }
 
   function formatThicknessLabel(value) {
@@ -138,6 +133,90 @@
     select.disabled = true;
   }
 
+  function getGlobalActiveThicknesses() {
+    return Array.from(
+      new Map(
+        Array.from((printOptionMaps.thickness || new Map()).values())
+          .filter((row) => row.active)
+          .map((row) => [Number(row.code), row])
+      ).values()
+    )
+      .sort((a, b) => Number(a.code) - Number(b.code))
+      .map((row) => ({ code: String(row.code), name: row.name || formatThicknessLabel(row.code) }));
+  }
+
+  function getThicknessesByTemplate(selectedTemplate) {
+    const globalThicknesses = getGlobalActiveThicknesses();
+    const allowed = (selectedTemplate?.thicknesses || []).map((value) => Number(value));
+    // Fallback: if template is missing or does not intersect with active options,
+    // keep thickness selectable from global active settings.
+    if (!allowed.length) return globalThicknesses;
+    const filtered = globalThicknesses.filter((row) => allowed.includes(Number(row.code)));
+    return filtered.length ? filtered : globalThicknesses;
+  }
+
+  function syncNonPrintSelectors() {
+    if (!form || service.type === "print") return;
+    const techSelect = form.elements.tech;
+    const materialSelect = form.elements.material;
+    const colorSelect = form.elements.color;
+    const thicknessSelect = form.elements.thickness;
+    if (!techSelect || !materialSelect || !colorSelect || !thicknessSelect) return;
+
+    const prevTech = String(techSelect.value || "");
+    const prevMaterial = String(materialSelect.value || "");
+    const prevColor = String(colorSelect.value || "");
+    const prevThickness = String(thicknessSelect.value || "");
+
+    const activeTechs = Array.from(printOptionMaps.technology.values()).filter((row) => row.active);
+    fillSelect(techSelect, [{ code: "", name: "Выберите технологию" }, ...activeTechs], (item) => {
+      const disabled = item.code ? "" : " disabled";
+      return `<option value="${item.code}"${disabled}>${item.name}</option>`;
+    });
+    techSelect.value = activeTechs.some((row) => row.code === prevTech) ? prevTech : "";
+    if (!techSelect.value) {
+      setDisabledPlaceholder(materialSelect, "Сначала выберите технологию");
+      setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
+      setDisabledPlaceholder(thicknessSelect, "Сначала выберите материал");
+      return;
+    }
+
+    const selectedTemplate = PRINT_TECH_TEMPLATES.find((row) => row.code === techSelect.value);
+    const activeMaterials = Array.from(printOptionMaps.material.values()).filter((row) => row.active);
+    const materialsFromTemplate = (selectedTemplate?.materials || [])
+      .map((code) => activeMaterials.find((row) => row.code === code))
+      .filter(Boolean);
+    const materials = materialsFromTemplate.length ? materialsFromTemplate : activeMaterials;
+    fillSelect(materialSelect, [{ code: "", name: "Выберите материал" }, ...materials], (item) => {
+      const disabled = item.code ? "" : " disabled";
+      return `<option value="${item.code}"${disabled}>${item.name}</option>`;
+    });
+    materialSelect.disabled = materials.length === 0;
+    materialSelect.value = materials.some((row) => row.code === prevMaterial) ? prevMaterial : "";
+    if (!materialSelect.value) {
+      setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
+      setDisabledPlaceholder(thicknessSelect, "Сначала выберите материал");
+      return;
+    }
+
+    const activeColors = Array.from(printOptionMaps.color.values()).filter((row) => row.active);
+    const materialCode = String(materialSelect.value || "");
+    const needsNaturalColor = /steel|inconel|cobalt|alsi|ti6|powder|sand|gypsum|paper|foil|pa\d|resin/i.test(materialCode);
+    const colors = needsNaturalColor ? activeColors.filter((row) => row.code === "natural") : activeColors.filter((row) => row.code !== "natural");
+    fillSelect(colorSelect, [{ code: "", name: "Выберите цвет" }, ...colors], (item) => {
+      const disabled = item.code ? "" : " disabled";
+      return `<option value="${item.code}"${disabled}>${item.name}</option>`;
+    });
+    colorSelect.disabled = colors.length <= 1;
+    colorSelect.value = colors.some((row) => row.code === prevColor) ? prevColor : "";
+    if (colors.length === 1) colorSelect.value = colors[0].code;
+
+    const thicknesses = getThicknessesByTemplate(selectedTemplate);
+    fillSelect(thicknessSelect, thicknesses, (item) => `<option value="${item.code}">${item.name}</option>`);
+    thicknessSelect.disabled = thicknesses.length === 0;
+    thicknessSelect.value = thicknesses.some((row) => row.code === prevThickness) ? prevThickness : (thicknesses[0]?.code || "");
+  }
+
   function syncPrintSelectors() {
     if (!form || service.type !== "print") return;
     const techSelect = form.elements.tech;
@@ -145,6 +224,10 @@
     const colorSelect = form.elements.color;
     const thicknessSelect = form.elements.thickness;
     if (!techSelect || !materialSelect || !colorSelect || !thicknessSelect) return;
+    const prevTech = String(techSelect.value || "");
+    const prevMaterial = String(materialSelect.value || "");
+    const prevColor = String(colorSelect.value || "");
+    const prevThickness = String(thicknessSelect.value || "");
 
     const activeTechCodes = new Set(printInventory.technologies.map((item) => item.code));
     const allowedTechs = PRINT_TECH_TEMPLATES.filter((tech) => activeTechCodes.has(tech.code));
@@ -152,9 +235,7 @@
       const disabled = item.code ? "" : " disabled";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
-    if (!allowedTechs.some((tech) => tech.code === techSelect.value)) {
-      techSelect.value = "";
-    }
+    techSelect.value = allowedTechs.some((tech) => tech.code === prevTech) ? prevTech : "";
     if (!techSelect.value) {
       setDisabledPlaceholder(materialSelect, "Сначала выберите технологию");
       setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
@@ -172,55 +253,48 @@
       .filter((code) => availableMaterialCodes.has(code))
       .map((code) => ({
         code,
-        name: printOptionMaps.material.get(code)?.name || code.toUpperCase(),
+        name: printOptionMaps.material.get(code)?.name || formatOptionName(code),
       }));
     fillSelect(materialSelect, [{ code: "", name: "Выберите материал" }, ...materials], (item) => {
       const disabled = item.code ? "" : " disabled";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     materialSelect.disabled = materials.length === 0;
-    if (!materials.some((item) => item.code === materialSelect.value)) {
-      materialSelect.value = "";
-    }
+    materialSelect.value = materials.some((item) => item.code === prevMaterial) ? prevMaterial : "";
     if (!materialSelect.value) {
       setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
-      setDisabledPlaceholder(thicknessSelect, "Сначала выберите материал");
+      const fallbackThicknesses = getThicknessesByTemplate(selectedTechTemplate);
+      fillSelect(thicknessSelect, fallbackThicknesses, (item) => `<option value="${item.code}">${item.name}</option>`);
+      thicknessSelect.disabled = fallbackThicknesses.length === 0;
       selectedPrintVariant = null;
       return;
     }
 
     const materialVariants = techVariants.filter((variant) => variant.materialCode === materialSelect.value);
     const colorCandidates = Array.from(new Map(materialVariants.map((variant) => [variant.colorCode, variant.colorName])).entries()).map(
-      ([code, name]) => ({ code, name: name || printOptionMaps.color.get(code)?.name || code.toUpperCase() })
+      ([code, name]) => ({ code, name: name || printOptionMaps.color.get(code)?.name || formatOptionName(code) })
     );
     fillSelect(colorSelect, [{ code: "", name: "Выберите цвет" }, ...colorCandidates], (item) => {
       const disabled = item.code ? "" : " disabled";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
-    if (!colorCandidates.some((item) => item.code === colorSelect.value)) {
-      colorSelect.value = "";
-    }
+    colorSelect.value = colorCandidates.some((item) => item.code === prevColor) ? prevColor : "";
     colorSelect.disabled = colorCandidates.length <= 1;
     if (colorCandidates.length === 1) {
       colorSelect.value = colorCandidates[0].code;
     }
-    if (!colorSelect.value) {
-      setDisabledPlaceholder(thicknessSelect, "Сначала выберите цвет");
-      selectedPrintVariant = null;
-      return;
-    }
-
-    const allowedThicknesses = new Set((selectedTechTemplate?.thicknesses || []).map((value) => Number(value)));
-    const thicknesses = materialVariants
-      .map((variant) => Number(variant.thicknessMm || 0))
-      .filter((value) => allowedThicknesses.has(value))
+    const thicknessSource = colorSelect.value
+      ? materialVariants.filter((variant) => variant.colorCode === colorSelect.value)
+      : materialVariants;
+    const thicknesses = Array.from(new Set(thicknessSource.map((variant) => Number(variant.thicknessMm || 0))))
+      .filter((value) => value > 0)
       .sort((a, b) => a - b)
       .map((value) => ({ code: String(value), name: formatThicknessLabel(value) }));
     thicknessSelect.disabled = thicknesses.length === 0;
     fillSelect(thicknessSelect, thicknesses, (item) => `<option value="${item.code}">${item.name}</option>`);
-    if (thicknesses.length && !thicknesses.some((item) => item.code === thicknessSelect.value)) {
-      thicknessSelect.value = thicknesses[0].code;
-    }
+    if (thicknesses.length && thicknesses.some((item) => item.code === prevThickness)) thicknessSelect.value = prevThickness;
+    else if (thicknesses.length) thicknessSelect.value = thicknesses[0].code;
+    else setDisabledPlaceholder(thicknessSelect, "Нет доступной толщины");
     pickPrintVariant();
   }
 
@@ -237,7 +311,21 @@
       technology: new Map((options.technology || []).map((item) => [item.code, item])),
       material: new Map((options.material || []).map((item) => [item.code, item])),
       color: new Map((options.color || []).map((item) => [item.code, item])),
+      thickness: new Map((options.thickness || []).map((item) => [item.code, item])),
     };
+    const activeTechCodes = new Set((options.technology || []).filter((item) => item.active).map((item) => item.code));
+    const activeMaterialCodes = new Set((options.material || []).filter((item) => item.active).map((item) => item.code));
+    const activeColorCodes = new Set((options.color || []).filter((item) => item.active).map((item) => item.code));
+    if (service.type === "print") {
+      printInventory.variants = printInventory.variants.filter(
+        (variant) =>
+          activeTechCodes.has(variant.technologyCode) &&
+          activeMaterialCodes.has(variant.materialCode) &&
+          activeColorCodes.has(variant.colorCode)
+      );
+      const availableTechCodes = new Set(printInventory.variants.map((variant) => variant.technologyCode));
+      printInventory.technologies = printInventory.technologies.filter((item) => availableTechCodes.has(item.code));
+    }
     const fill = (name, items, mapper) => {
       const select = form.elements[name];
       if (!select || !Array.isArray(items)) return;
@@ -250,9 +338,8 @@
     fill("tech", options.technology || []);
     fill("color", options.color || []);
     fill("thickness", options.thickness || []);
-    if (service.type === "print") {
-      syncPrintSelectors();
-    }
+    if (service.type === "print") syncPrintSelectors();
+    else syncNonPrintSelectors();
   }
 
   async function updatePrice() {
@@ -271,6 +358,7 @@
         body: JSON.stringify(buildPayload()),
       });
       sumEl.textContent = `${data.totalAmount || 0} ₽`;
+      syncCheckoutLinksHref();
       if (service.type === "print") {
         pickPrintVariant();
       }
@@ -764,6 +852,23 @@
     const payload = buildPayload();
     payload.totalAmount = Number(String(sumEl?.textContent || "0").replace(/[^\d]/g, "")) || 0;
     sessionStorage.setItem("checkout_payload", JSON.stringify(payload));
+    return payload;
+  }
+
+  function buildCheckoutUrl(payload) {
+    const params = new URLSearchParams();
+    params.set("totalAmount", String(Number(payload?.totalAmount || 0)));
+    params.set("serviceType", String(payload?.serviceType || service.type || ""));
+    params.set("serviceName", String(payload?.serviceName || service.name || ""));
+    return `checkout.html?${params.toString()}`;
+  }
+
+  function syncCheckoutLinksHref() {
+    const payload = saveCheckoutPayload();
+    const href = buildCheckoutUrl(payload);
+    checkoutLinks.forEach((link) => {
+      link.setAttribute("href", href);
+    });
   }
 
   function redirectToLoginForCheckout() {
@@ -776,17 +881,18 @@
   }
 
   function initCheckoutLinks() {
+    syncCheckoutLinksHref();
     checkoutLinks.forEach((link) => {
       link.addEventListener("click", async (e) => {
+        e.preventDefault();
         const needUpload = page === "print-step-3.html" && localModelFile && !uploadedFile?.path;
         if (needUpload) {
-          e.preventDefault();
           const status = document.getElementById("model-upload-status");
           try {
             if (status) status.textContent = "Сохранение файла для заказа…";
             await tryUploadModelFile(localModelFile, status, "");
-            saveCheckoutPayload();
-            window.location.href = link.getAttribute("href") || "checkout.html";
+            const payload = saveCheckoutPayload();
+            window.location.href = buildCheckoutUrl(payload);
           } catch (err) {
             if (err.status === 401) {
               if (status) status.textContent = "Войдите в аккаунт, чтобы прикрепить файл к заказу.";
@@ -797,7 +903,8 @@
           }
           return;
         }
-        saveCheckoutPayload();
+        const payload = saveCheckoutPayload();
+        window.location.href = buildCheckoutUrl(payload);
       });
     });
   }
@@ -814,17 +921,26 @@
         if (service.type === "print") {
           syncPrintSelectors();
           updatePrice();
+        } else {
+          syncNonPrintSelectors();
+          updatePrice();
         }
       });
       form?.elements?.material?.addEventListener("change", () => {
         if (service.type === "print") {
           syncPrintSelectors();
           updatePrice();
+        } else {
+          syncNonPrintSelectors();
+          updatePrice();
         }
       });
       form?.elements?.color?.addEventListener("change", () => {
         if (service.type === "print") {
           syncPrintSelectors();
+          updatePrice();
+        } else {
+          syncNonPrintSelectors();
           updatePrice();
         }
       });

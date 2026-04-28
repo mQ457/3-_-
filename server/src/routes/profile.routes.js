@@ -10,6 +10,7 @@ const {
 } = require("../domain/order-chat");
 const { notificationUpload } = require("../domain/notification-upload");
 const { processSupportBotReply } = require("../domain/support-bot");
+const { publish } = require("../realtime");
 
 const router = express.Router();
 
@@ -369,9 +370,10 @@ router.delete("/payment-methods/:id", requireAuth, async (req, res, next) => {
 router.get("/support/threads", requireAuth, async (req, res, next) => {
   try {
     const result = await db.query(
-      `SELECT id, subject, status, created_at, updated_at, last_message_at
+      `SELECT id, subject, status, user_visible, created_at, updated_at, last_message_at
        FROM support_threads
        WHERE user_id = $1
+         AND user_visible = 1
        ORDER BY last_message_at DESC`,
       [req.auth.userId]
     );
@@ -381,6 +383,7 @@ router.get("/support/threads", requireAuth, async (req, res, next) => {
         id: row.id,
         subject: row.subject,
         status: row.status,
+        userVisible: Boolean(row.user_visible),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         lastMessageAt: row.last_message_at,
@@ -400,23 +403,52 @@ router.post("/support/threads", requireAuth, async (req, res, next) => {
     if (!String(message || "").trim()) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Введите сообщение." });
     }
-    const threadId = crypto.randomUUID();
-    const msgId = crypto.randomUUID();
-    await db.query(
-      `INSERT INTO support_threads (id, user_id, subject, status, created_at, updated_at, last_message_at)
-       VALUES ($1, $2, $3, 'closed', datetime('now'), datetime('now'), datetime('now'))`,
-      [threadId, req.auth.userId, String(subject).trim()]
+    const normalizedSubject = String(subject).trim();
+    const normalizedMessage = String(message).trim();
+    const existingThread = await db.query(
+      `SELECT id, status
+       FROM support_threads
+       WHERE user_id = $1
+         AND user_visible = 1
+       ORDER BY last_message_at DESC
+       LIMIT 1`,
+      [req.auth.userId]
     );
+    const threadId = existingThread.rows[0]?.id || crypto.randomUUID();
+    const existingStatus = String(existingThread.rows[0]?.status || "");
+    const msgId = crypto.randomUUID();
+    if (existingThread.rows[0]) {
+      await db.query(
+        `UPDATE support_threads
+         SET subject = $1,
+             user_visible = 1,
+             updated_at = datetime('now'),
+             last_message_at = datetime('now')
+         WHERE id = $2`,
+        [normalizedSubject, threadId]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO support_threads (id, user_id, subject, status, user_visible, created_at, updated_at, last_message_at)
+         VALUES ($1, $2, $3, 'closed', 1, datetime('now'), datetime('now'), datetime('now'))`,
+        [threadId, req.auth.userId, normalizedSubject]
+      );
+    }
     await db.query(
       `INSERT INTO support_messages (id, thread_id, sender_type, sender_id, message, created_at)
        VALUES ($1, $2, 'user', $3, $4, datetime('now'))`,
-      [msgId, threadId, req.auth.userId, String(message).trim()]
+      [msgId, threadId, req.auth.userId, normalizedMessage]
     );
+    publish("support:updated", { threadId });
+    if (existingThread.rows[0] && existingStatus === "open") {
+      return res.status(201).json({ ok: true, threadId, escalated: true, handledByBot: false });
+    }
     const botResult = await processSupportBotReply({
       threadId,
-      userMessage: String(message).trim(),
+      userMessage: normalizedMessage,
     });
-    res.status(201).json({
+    publish("support:updated", { threadId });
+    return res.status(201).json({
       ok: true,
       threadId,
       escalated: Boolean(botResult?.escalated),
@@ -429,7 +461,7 @@ router.post("/support/threads", requireAuth, async (req, res, next) => {
 
 router.get("/support/threads/:threadId/messages", requireAuth, async (req, res, next) => {
   try {
-    const thread = await db.query("SELECT id FROM support_threads WHERE id = $1 AND user_id = $2 LIMIT 1", [
+    const thread = await db.query("SELECT id FROM support_threads WHERE id = $1 AND user_id = $2 AND user_visible = 1 LIMIT 1", [
       req.params.threadId,
       req.auth.userId,
     ]);
@@ -464,7 +496,7 @@ router.post("/support/threads/:threadId/messages", requireAuth, async (req, res,
     if (!String(message || "").trim()) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Введите сообщение." });
     }
-    const thread = await db.query("SELECT id, status FROM support_threads WHERE id = $1 AND user_id = $2 LIMIT 1", [
+    const thread = await db.query("SELECT id, status FROM support_threads WHERE id = $1 AND user_id = $2 AND user_visible = 1 LIMIT 1", [
       req.params.threadId,
       req.auth.userId,
     ]);
@@ -484,6 +516,7 @@ router.post("/support/threads/:threadId/messages", requireAuth, async (req, res,
        WHERE id = $1`,
       [req.params.threadId]
     );
+    publish("support:updated", { threadId: req.params.threadId });
     if (threadRow.status === "open") {
       return res.status(201).json({ ok: true, escalated: true, handledByBot: false });
     }
@@ -491,6 +524,7 @@ router.post("/support/threads/:threadId/messages", requireAuth, async (req, res,
       threadId: req.params.threadId,
       userMessage: String(message).trim(),
     });
+    publish("support:updated", { threadId: req.params.threadId });
     return res.status(201).json({
       ok: true,
       escalated: Boolean(botResult?.escalated),

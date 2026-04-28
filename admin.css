@@ -285,6 +285,61 @@ textarea {
   cursor: pointer;
 }
 
+.admin-btn,
+.btn-primary,
+.btn-secondary {
+  transition:
+    transform .14s ease,
+    box-shadow .18s ease,
+    filter .18s ease,
+    opacity .18s ease;
+}
+
+.admin-btn:hover,
+.btn-primary:hover,
+.btn-secondary:hover {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.admin-btn:active,
+.btn-primary:active,
+.btn-secondary:active,
+.admin-btn.is-pressed,
+.btn-primary.is-pressed,
+.btn-secondary.is-pressed {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+}
+
+.admin-btn.is-busy,
+.btn-primary.is-busy,
+.btn-secondary.is-busy {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.88;
+}
+
+.admin-btn.is-busy::after,
+.btn-primary.is-busy::after,
+.btn-secondary.is-busy::after {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 8px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: adminBtnSpin .7s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes adminBtnSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .stock-dot {
   width: 11px;
   height: 11px;

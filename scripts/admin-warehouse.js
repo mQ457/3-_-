@@ -29,73 +29,29 @@
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6">Нет данных</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10">Нет данных</td></tr>';
       return;
     }
-
-    const groups = new Map();
-    filtered.forEach((item) => {
-      const key = `${item.technologyCode}||${item.materialCode}`;
-      if (!groups.has(key)) {
-        groups.set(key, { key, technologyCode: item.technologyCode, materialCode: item.materialCode, items: [] });
-      }
-      groups.get(key).items.push(item);
-    });
-
-    const htmlParts = [];
-    Array.from(groups.values()).forEach((group, groupIndex) => {
-      const totalStock = group.items.reduce((sum, item) => sum + Number(item.stockQty || 0), 0);
-      const totalAvailable = group.items.reduce((sum, item) => sum + Number(item.availableQty || 0), 0);
-      const stockPercent = totalStock > 0 ? (totalAvailable / totalStock) * 100 : 0;
-      const status = stockPercent >= 60 ? "ok" : stockPercent >= 20 ? "low" : "critical";
-      const rowKey = `g-${groupIndex}`;
-      htmlParts.push(`
-      <tr class="warehouse-group-row">
-        <td>${esc(rowKey)}</td>
-        <td>${esc(group.technologyCode)}</td>
-        <td>${esc(group.materialCode)}</td>
-        <td>${group.items.length}</td>
-        <td>${esc(totalStock)}</td>
-        <td><span class="stock-dot stock-dot--${status}"></span></td>
-        <td><button class="btn-secondary" data-group-toggle="${rowKey}">Показать</button></td>
-      </tr>`);
-      group.items.forEach((item) => {
-        htmlParts.push(`
-      <tr class="warehouse-child-row" data-parent="${rowKey}" style="display:none;">
+    tbody.innerHTML = filtered
+      .map(
+        (item) => `
+      <tr>
         <td>${esc(item.shortId || item.id)}</td>
-        <td colspan="2" style="min-width:260px;">
-          <div class="warehouse-child-grid">
-            <input value="${esc(item.colorCode)}" data-color-id="${item.id}" />
-            <input type="number" step="0.1" value="${item.thicknessMm != null ? item.thicknessMm : ""}" data-thickness-id="${item.id}" />
-            <input type="number" step="0.01" value="${item.stockQty || 0}" data-stock-id="${item.id}" />
-            <input value="${esc(item.unit || "g")}" data-unit-id="${item.id}" />
-            <input type="number" value="${item.pricePerCm3 || 0}" data-price-id="${item.id}" />
-          </div>
-        </td>
-        <td>${esc(item.availableQty)}</td>
-        <td>${esc(item.stockQty)}</td>
+        <td>${esc(item.technologyCode)}</td>
+        <td>${esc(item.materialCode)}</td>
+        <td><input value="${esc(item.colorCode)}" data-color-id="${item.id}" /></td>
+        <td><input type="number" step="0.1" value="${item.thicknessMm != null ? item.thicknessMm : ""}" data-thickness-id="${item.id}" /></td>
+        <td><input type="number" step="0.01" value="${item.stockQty || 0}" data-stock-id="${item.id}" /></td>
+        <td><input value="${esc(item.unit || "g")}" data-unit-id="${item.id}" /></td>
+        <td><input type="number" value="${item.pricePerCm3 || 0}" data-price-id="${item.id}" /></td>
         <td><span class="stock-dot stock-dot--${item.stockStatus || "ok"}"></span></td>
         <td>
           <button class="btn-secondary" data-save-id="${item.id}">Сохранить</button>
           <button class="btn-secondary" data-delete-id="${item.id}">Удалить</button>
         </td>
-      </tr>`);
-      });
-    });
-    tbody.innerHTML = htmlParts.join("");
-
-    tbody.querySelectorAll("[data-group-toggle]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const key = button.getAttribute("data-group-toggle");
-        const rows = tbody.querySelectorAll(`.warehouse-child-row[data-parent="${key}"]`);
-        if (!rows.length) return;
-        const opened = Array.from(rows).some((row) => row.style.display !== "none");
-        rows.forEach((row) => {
-          row.style.display = opened ? "none" : "table-row";
-        });
-        button.textContent = opened ? "Показать" : "Скрыть";
-      });
-    });
+      </tr>`
+      )
+      .join("");
 
     tbody.querySelectorAll("[data-save-id]").forEach((button) => {
       button.addEventListener("click", async () => {

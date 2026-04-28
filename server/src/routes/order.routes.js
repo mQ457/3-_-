@@ -133,13 +133,18 @@ async function loadPrintInventoryRows() {
 
 function findInventoryVariant(inventoryRows, { technology, material, color, thickness }) {
   const normalizedThickness = thickness != null && thickness !== "" ? Number(thickness) : null;
-  return inventoryRows.find(
+  const normalizedMaterial = String(material || "");
+  const candidates = inventoryRows.filter(
     (row) =>
       row.itemType === "material_variant" &&
       row.technologyCode === String(technology || "") &&
-      row.materialCode === String(material || "") &&
       row.colorCode === String(color || "") &&
       Number(row.thicknessMm || 0) === Number(normalizedThickness || 0)
+  );
+  if (!candidates.length) return null;
+  return (
+    (normalizedMaterial ? candidates.find((row) => row.materialCode === normalizedMaterial) : null) ||
+    candidates[0]
   );
 }
 
@@ -214,8 +219,14 @@ router.get("/options", async (_req, res, next) => {
       grouped[row.type].push(item);
     });
     const inventoryRows = await loadPrintInventoryRows();
+    const activeTechnologies = new Set((grouped.technology || []).filter((item) => item.active).map((item) => item.code));
+    const activeMaterials = new Set((grouped.material || []).filter((item) => item.active).map((item) => item.code));
+    const activeColors = new Set((grouped.color || []).filter((item) => item.active).map((item) => item.code));
     const sellableVariants = inventoryRows.filter((row) => {
       if (row.itemType !== "material_variant") return false;
+      if (activeTechnologies.size && !activeTechnologies.has(row.technologyCode)) return false;
+      if (activeMaterials.size && !activeMaterials.has(row.materialCode)) return false;
+      if (activeColors.size && !activeColors.has(row.colorCode)) return false;
       const availableQty = Math.max(0, Number(row.stockQty || 0) - Number(row.reservedQty || 0));
       const stockQty = Math.max(0, Number(row.stockQty || 0));
       const stockPercent = stockQty > 0 ? (availableQty / stockQty) * 100 : 0;

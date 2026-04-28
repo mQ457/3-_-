@@ -19,6 +19,7 @@
   let selectedPrintVariant = null;
   let printInventory = { technologies: [], variants: [] };
 
+
   const MODEL_EXTS = ["stl", "obj", "amf", "3mf", "fbx"];
   const THREE_VER = "0.125.2";
   const THREE_BASE = `https://unpkg.com/three@${THREE_VER}`;
@@ -53,7 +54,7 @@
     return {
       serviceType: service.type,
       serviceName: service.name,
-      material: String(form?.elements.material?.value || selectedPrintVariant?.materialCode || ""),
+      material: String(selectedPrintVariant?.materialCode || ""),
       technology: String(form?.elements.tech?.value || selectedPrintVariant?.technologyCode || ""),
       color: String(form?.elements.color?.value || selectedPrintVariant?.colorCode || ""),
       thickness: String(form?.elements.thickness?.value || selectedPrintVariant?.thicknessMm || ""),
@@ -80,19 +81,18 @@
   function pickPrintVariant() {
     if (!form || service.type !== "print") return;
     const tech = String(form.elements.tech?.value || "");
-    const material = String(form.elements.material?.value || "");
     const color = String(form.elements.color?.value || "");
     const thickness = Number(form.elements.thickness?.value || 0);
-    selectedPrintVariant = printInventory.variants.find(
+    const candidates = printInventory.variants.filter(
       (variant) =>
         variant.technologyCode === tech &&
-        variant.materialCode === material &&
         variant.colorCode === color &&
         Number(variant.thicknessMm || 0) === thickness
-    ) || null;
+    );
+    selectedPrintVariant = candidates[0] || null;
     if (pricingHintEl) {
       if (!selectedPrintVariant) {
-        pricingHintEl.textContent = "Выберите доступную связку материала, цвета и толщины.";
+        pricingHintEl.textContent = "Выберите доступную связку технологии, цвета и толщины.";
       } else {
         pricingHintEl.textContent = `Остаток: ${formatNumberRu(selectedPrintVariant.availableQty, 0)} ${selectedPrintVariant.unit}. Цена материала: ${formatNumberRu(
           selectedPrintVariant.pricePerCm3,
@@ -111,27 +111,16 @@
   function syncPrintSelectors() {
     if (!form || service.type !== "print") return;
     const techSelect = form.elements.tech;
-    const materialSelect = form.elements.material;
     const colorSelect = form.elements.color;
     const thicknessSelect = form.elements.thickness;
-    if (!techSelect || !materialSelect || !colorSelect || !thicknessSelect) return;
+    if (!techSelect || !colorSelect || !thicknessSelect) return;
 
     if (!techSelect.value && printInventory.technologies[0]) {
       techSelect.value = printInventory.technologies[0].code;
     }
     const techCode = String(techSelect.value || "");
     const techVariants = printInventory.variants.filter((variant) => variant.technologyCode === techCode && variant.availableQty > 0);
-    const materials = Array.from(new Map(techVariants.map((variant) => [variant.materialCode, variant.materialName])).entries()).map(
-      ([code, name]) => ({ code, name })
-    );
-    fillSelect(materialSelect, materials, (item) => `<option value="${item.code}">${item.name}</option>`);
-    if (materials.length && !materials.some((item) => item.code === materialSelect.value)) {
-      materialSelect.value = materials[0].code;
-    }
-
-    const materialCode = String(materialSelect.value || "");
-    const materialVariants = techVariants.filter((variant) => variant.materialCode === materialCode);
-    const colors = Array.from(new Map(materialVariants.map((variant) => [variant.colorCode, variant.colorName])).entries()).map(([code, name]) => ({
+    const colors = Array.from(new Map(techVariants.map((variant) => [variant.colorCode, variant.colorName])).entries()).map(([code, name]) => ({
       code,
       name,
     }));
@@ -141,11 +130,10 @@
     }
 
     const colorCode = String(colorSelect.value || "");
-    const colorVariants = materialVariants.filter((variant) => variant.colorCode === colorCode);
-    const thicknesses = colorVariants.map((variant) => ({
-      code: String(variant.thicknessMm),
-      name: `${String(variant.thicknessMm).replace(".", ",")} мм`,
-    }));
+    const colorVariants = techVariants.filter((variant) => variant.colorCode === colorCode);
+    const thicknesses = ["0.1", "0.2", "0.3"].filter((value) =>
+      colorVariants.some((variant) => Number(variant.thicknessMm || 0) === Number(value))
+    ).map((value) => ({ code: value, name: `${value.replace(".", ",")} мм` }));
     fillSelect(thicknessSelect, thicknesses, (item) => `<option value="${item.code}">${item.name}</option>`);
     if (thicknesses.length && !thicknesses.some((item) => item.code === thicknessSelect.value)) {
       thicknessSelect.value = thicknesses[0].code;
@@ -175,6 +163,8 @@
     fill("color", options.color || []);
     fill("thickness", options.thickness || []);
     if (service.type === "print" && printInventory.technologies.length && printInventory.variants.length) {
+      const materialField = document.querySelector('[data-material-field]');
+      if (materialField) materialField.style.display = "none";
       fill("tech", printInventory.technologies, (item) => `<option value="${item.code}">${item.name}</option>`);
       syncPrintSelectors();
     }
@@ -729,12 +719,6 @@
       initCheckoutLinks();
       await updatePrice();
       form?.elements?.tech?.addEventListener("change", () => {
-        if (service.type === "print") {
-          syncPrintSelectors();
-          updatePrice();
-        }
-      });
-      form?.elements?.material?.addEventListener("change", () => {
         if (service.type === "print") {
           syncPrintSelectors();
           updatePrice();

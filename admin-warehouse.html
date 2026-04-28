@@ -24,17 +24,12 @@
     </aside>
     <main class="admin-main">
       <div class="admin-top">
-        <h2 style="margin:0;">Склад (остатки и SKU)</h2>
+        <h2 style="margin:0;">Склад</h2>
         <div data-admin-name></div>
       </div>
       <section class="admin-card">
         <div class="filters">
-          <select id="warehouse-type">
-            <option value="">Все типы</option>
-            <option value="material_variant">Материалы (варианты)</option>
-            <option value="technology">Технологии</option>
-          </select>
-          <input id="warehouse-search" placeholder="Поиск по названию/коду/материалу" />
+          <input id="warehouse-search" placeholder="Поиск по технологии/материалу/цвету/толщине" />
           <button class="btn-secondary" id="warehouse-refresh">Обновить</button>
           <button class="btn-primary" id="warehouse-add">Добавить</button>
         </div>
@@ -42,9 +37,32 @@
           <table>
             <thead>
               <tr>
-                <th>Тип</th>
-                <th>Код</th>
-                <th>Название</th>
+                <th>ID</th>
+                <th>Технология</th>
+                <th>Материал</th>
+                <th>Цвет</th>
+                <th>Толщина</th>
+                <th>Количество</th>
+                <th>Ед.</th>
+                <th>Цена за см3</th>
+                <th>Индикатор</th>
+                <th>Действие</th>
+              </tr>
+            </thead>
+            <tbody id="warehouse-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="admin-card" style="margin-top:12px;">
+        <div class="filters">
+          <input id="warehouse-accounting-search" placeholder="Поиск по ID/технологии/материалу" />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
                 <th>Технология</th>
                 <th>Материал</th>
                 <th>Цвет</th>
@@ -54,20 +72,34 @@
                 <th>Потрачено</th>
                 <th>Доступно</th>
                 <th>Ед.</th>
-                <th>Цена за см3</th>
-                <th>Порог low</th>
-                <th>Порог stop</th>
                 <th>Индикатор</th>
-                <th>Активно</th>
-                <th>Порядок</th>
-                <th>Действие</th>
               </tr>
             </thead>
-            <tbody id="warehouse-body"></tbody>
+            <tbody id="warehouse-accounting-body"></tbody>
           </table>
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="warehouse-modal" class="admin-modal" hidden>
+    <div class="admin-modal__backdrop" data-close-warehouse-modal></div>
+    <div class="admin-modal__card">
+      <h3 style="margin-top:0;">Добавить позицию на склад</h3>
+      <form id="warehouse-modal-form" class="grid-two">
+        <label class="field"><span class="muted-small">Технология</span><input name="technologyCode" required placeholder="fdm" /></label>
+        <label class="field"><span class="muted-small">Материал</span><input name="materialCode" required placeholder="pla" /></label>
+        <label class="field"><span class="muted-small">Цвет</span><input name="colorCode" required placeholder="green" /></label>
+        <label class="field"><span class="muted-small">Толщина (мм)</span><input name="thicknessMm" type="number" step="0.1" required value="0.2" /></label>
+        <label class="field"><span class="muted-small">Количество</span><input name="stockQty" type="number" step="0.01" required value="1000" /></label>
+        <label class="field"><span class="muted-small">Ед.</span><input name="unit" required value="g" /></label>
+        <label class="field"><span class="muted-small">Цена за см3</span><input name="pricePerCm3" type="number" required value="40" /></label>
+      </form>
+      <div class="actions" style="margin-top:12px;">
+        <button class="btn-secondary" type="button" data-close-warehouse-modal>Отмена</button>
+        <button class="btn-primary" type="button" id="warehouse-modal-submit">Добавить</button>
+      </div>
+    </div>
   </div>
   <script src="scripts/admin-common.js"></script>
   <script src="scripts/admin-warehouse.js"></script>

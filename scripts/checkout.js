@@ -23,6 +23,16 @@
     }
   }
 
+  function normalizeServiceType(payload) {
+    const current = String(payload?.serviceType || "").trim().toLowerCase();
+    if (current) return current;
+    const serviceName = String(payload?.serviceName || "").toLowerCase();
+    if (serviceName.includes("скан")) return "scan";
+    if (serviceName.includes("модел")) return "modeling";
+    if (serviceName.includes("печат")) return "print";
+    return "";
+  }
+
   function rememberPostLoginRedirect(target) {
     try {
       sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, String(target || "checkout.html"));
@@ -126,6 +136,12 @@
       setStatus(validation.message, true);
       return;
     }
+    const serviceType = normalizeServiceType(payload);
+    if (!serviceType) {
+      setStatus("Не выбран тип услуги. Вернитесь на шаг услуги и нажмите «Перейти к оплате» снова.", true);
+      return;
+    }
+    payload.serviceType = serviceType;
 
     try {
       const bootstrap = await API.request("/profile/bootstrap", { method: "GET" });

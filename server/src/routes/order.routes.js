@@ -189,7 +189,8 @@ async function calculateOrderPrice({ serviceType, material, technology, color, t
     (priceMap.get(`technology:${technology}`) || 0) +
     (priceMap.get(`color:${color}`) || 0);
   const subtotal = Number(rule.baseFee || 0) + Number(rule.hourRate || 0) * hours * complexityK + extras;
-  return Math.max(rule.minPrice || 500, Math.round(subtotal));
+  const total = subtotal * quantity;
+  return Math.max(rule.minPrice || 500, Math.round(total));
 }
 
 router.get("/options", async (_req, res, next) => {
@@ -216,8 +217,9 @@ router.get("/options", async (_req, res, next) => {
     const sellableVariants = inventoryRows.filter((row) => {
       if (row.itemType !== "material_variant") return false;
       const availableQty = Math.max(0, Number(row.stockQty || 0) - Number(row.reservedQty || 0));
-      const stopThreshold = Math.max(0, Number(row.stopStockThreshold || 0));
-      return availableQty > stopThreshold;
+      const stockQty = Math.max(0, Number(row.stockQty || 0));
+      const stockPercent = stockQty > 0 ? (availableQty / stockQty) * 100 : 0;
+      return stockPercent >= 20;
     });
 
     const technologyCodes = new Set(sellableVariants.map((row) => row.technologyCode));

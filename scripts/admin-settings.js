@@ -1,8 +1,10 @@
 (function () {
   const API = window.AdminCommon;
   const tbody = document.getElementById("settings-body");
+  const variantsBody = document.getElementById("settings-variants-body");
   const refreshBtn = document.getElementById("settings-refresh");
   let rules = [];
+  let variants = [];
 
   function render() {
     if (!rules.length) {
@@ -47,11 +49,45 @@
         await load();
       });
     });
+
+    if (!variants.length) {
+      variantsBody.innerHTML = '<tr><td colspan="6">Нет данных</td></tr>';
+    } else {
+      variantsBody.innerHTML = variants
+        .map(
+          (item) => `
+      <tr>
+        <td>${item.id}</td>
+        <td>${item.technologyCode || "—"}</td>
+        <td>${item.materialCode || "—"}</td>
+        <td>${item.colorCode || "—"}</td>
+        <td>${item.thicknessMm != null ? item.thicknessMm : "—"}</td>
+        <td><input type="checkbox" data-variant-active="${item.id}" ${item.active ? "checked" : ""}></td>
+      </tr>`
+        )
+        .join("");
+
+      variantsBody.querySelectorAll("[data-variant-active]").forEach((node) => {
+        node.addEventListener("change", async () => {
+          const id = node.getAttribute("data-variant-active");
+          await API.request(`/admin/warehouse/items/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ active: node.checked }),
+          });
+          await load();
+        });
+      });
+    }
   }
 
   async function load() {
-    const data = await API.request("/admin/pricing-rules");
-    rules = data.rules || [];
+    const [rulesData, warehouseData] = await Promise.all([
+      API.request("/admin/pricing-rules"),
+      API.request("/admin/warehouse/items"),
+    ]);
+    rules = rulesData.rules || [];
+    variants = (warehouseData.items || []).filter((item) => item.itemType === "material_variant");
     render();
   }
 

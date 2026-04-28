@@ -905,6 +905,20 @@ router.get("/warehouse/items", async (_req, res, next) => {
     res.json({
       ok: true,
       items: result.rows.map((row) => ({
+        ...(function compute() {
+          const stockQty = Number(row.stock_qty || 0);
+          const reservedQty = Number(row.reserved_qty || 0);
+          const availableQty = Math.max(0, stockQty - reservedQty);
+          const stockPercent = stockQty > 0 ? (availableQty / stockQty) * 100 : 0;
+          const stockStatus = stockPercent >= 60 ? "ok" : stockPercent >= 20 ? "low" : "critical";
+          return {
+            stockQty,
+            reservedQty,
+            availableQty,
+            stockPercent: Math.round(stockPercent * 100) / 100,
+            stockStatus,
+          };
+        })(),
         id: row.id,
         itemType: row.item_type,
         code: row.code,
@@ -914,19 +928,10 @@ router.get("/warehouse/items", async (_req, res, next) => {
         colorCode: row.color_code || "",
         thicknessMm: row.thickness_mm != null ? Number(row.thickness_mm) : null,
         unit: row.unit || "g",
-        stockQty: Number(row.stock_qty || 0),
-        reservedQty: Number(row.reserved_qty || 0),
         consumedQty: Number(row.consumed_qty || 0),
-        availableQty: Math.max(0, Number(row.stock_qty || 0) - Number(row.reserved_qty || 0)),
         pricePerCm3: Number(row.price_per_cm3 || 0),
         lowStockThreshold: Number(row.low_stock_threshold || 0),
         stopStockThreshold: Number(row.stop_stock_threshold || 0),
-        stockStatus:
-          Math.max(0, Number(row.stock_qty || 0) - Number(row.reserved_qty || 0)) <= Number(row.stop_stock_threshold || 0)
-            ? "critical"
-            : Math.max(0, Number(row.stock_qty || 0) - Number(row.reserved_qty || 0)) <= Number(row.low_stock_threshold || 0)
-            ? "low"
-            : "ok",
         active: Boolean(row.active),
         sortOrder: Number(row.sort_order || 0),
         meta: parseMetaJsonSafe(row.meta_json),

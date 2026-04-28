@@ -1,14 +1,20 @@
 (function () {
   const API = window.AdminCommon;
-  const tbody = document.getElementById("warehouse-body");
-  const searchEl = document.getElementById("warehouse-search");
-  const accountingSearchEl = document.getElementById("warehouse-accounting-search");
-  const accountingBody = document.getElementById("warehouse-accounting-body");
   const refreshBtn = document.getElementById("warehouse-refresh");
-  const addBtn = document.getElementById("warehouse-add");
-  const modal = document.getElementById("warehouse-modal");
-  const modalForm = document.getElementById("warehouse-modal-form");
-  const modalSubmit = document.getElementById("warehouse-modal-submit");
+  const techSearchEl = document.getElementById("warehouse-tech-search");
+  const materialSearchEl = document.getElementById("warehouse-material-search");
+  const variantSearchEl = document.getElementById("warehouse-variant-search");
+  const techBody = document.getElementById("warehouse-tech-body");
+  const materialBody = document.getElementById("warehouse-material-body");
+  const variantBody = document.getElementById("warehouse-variant-body");
+  const addTechBtn = document.getElementById("warehouse-tech-add");
+  const addMaterialBtn = document.getElementById("warehouse-material-add");
+  const addTechCodeEl = document.getElementById("warehouse-tech-code");
+  const addTechNameEl = document.getElementById("warehouse-tech-name");
+  const addMaterialCodeEl = document.getElementById("warehouse-material-code");
+  const addMaterialNameEl = document.getElementById("warehouse-material-name");
+
+  let options = [];
   let items = [];
 
   function esc(value) {
@@ -19,154 +25,138 @@
       .replace(/"/g, "&quot;");
   }
 
-  function render() {
-    const text = String(searchEl?.value || "").trim().toLowerCase();
-    const filtered = items.filter((item) => {
-      const byText =
-        !text ||
-        [item.shortId, item.id, item.code, item.name, item.materialCode, item.colorCode, item.technologyCode].join(" ").toLowerCase().includes(text);
-      return item.itemType === "material_variant" && byText;
-    });
+  function byType(type) {
+    return options.filter((row) => row.type === type);
+  }
 
-    if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10">Нет данных</td></tr>';
+  function renderTechnologies() {
+    const text = String(techSearchEl?.value || "").trim().toLowerCase();
+    const technologies = byType("technology").filter((row) =>
+      !text || [row.code, row.name].join(" ").toLowerCase().includes(text)
+    );
+    if (!technologies.length) {
+      techBody.innerHTML = '<tr><td colspan="3">Нет данных</td></tr>';
       return;
     }
-    tbody.innerHTML = filtered
+    techBody.innerHTML = technologies
       .map(
-        (item) => `
-      <tr>
-        <td>${esc(item.shortId || item.id)}</td>
-        <td>${esc(item.technologyCode)}</td>
-        <td>${esc(item.materialCode)}</td>
-        <td><input value="${esc(item.colorCode)}" data-color-id="${item.id}" /></td>
-        <td><input type="number" step="0.1" value="${item.thicknessMm != null ? item.thicknessMm : ""}" data-thickness-id="${item.id}" /></td>
-        <td><input type="number" step="0.01" value="${item.stockQty || 0}" data-stock-id="${item.id}" /></td>
-        <td><input value="${esc(item.unit || "g")}" data-unit-id="${item.id}" /></td>
-        <td><input type="number" value="${item.pricePerCm3 || 0}" data-price-id="${item.id}" /></td>
-        <td><span class="stock-dot stock-dot--${item.stockStatus || "ok"}"></span></td>
-        <td>
-          <button class="btn-secondary" data-save-id="${item.id}">Сохранить</button>
-          <button class="btn-secondary" data-delete-id="${item.id}">Удалить</button>
-        </td>
-      </tr>`
+        (row) => `<tr>
+          <td>${esc(row.code)}</td>
+          <td>${esc(row.name)}</td>
+          <td><input type="checkbox" data-toggle-option="${row.id}" ${row.active ? "checked" : ""}></td>
+        </tr>`
       )
       .join("");
+  }
 
-    tbody.querySelectorAll("[data-save-id]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const id = button.getAttribute("data-save-id");
-        const current = items.find((row) => row.id === id);
-        if (!current) return;
-        await API.request(`/admin/warehouse/items/${id}`, {
+  function renderMaterials() {
+    const text = String(materialSearchEl?.value || "").trim().toLowerCase();
+    const materials = byType("material").filter((row) =>
+      !text || [row.code, row.name].join(" ").toLowerCase().includes(text)
+    );
+    if (!materials.length) {
+      materialBody.innerHTML = '<tr><td colspan="4">Нет данных</td></tr>';
+      return;
+    }
+    materialBody.innerHTML = materials
+      .map(
+        (row) => `<tr>
+          <td>${esc(row.code)}</td>
+          <td>${esc(row.name)}</td>
+          <td>${Number(row.priceDelta || 0)}</td>
+          <td><input type="checkbox" data-toggle-option="${row.id}" ${row.active ? "checked" : ""}></td>
+        </tr>`
+      )
+      .join("");
+  }
+
+  function renderVariants() {
+    const text = String(variantSearchEl?.value || "").trim().toLowerCase();
+    const variants = items.filter((row) => {
+      if (row.itemType !== "material_variant") return false;
+      return !text || [row.technologyCode, row.materialCode, row.colorCode, row.code].join(" ").toLowerCase().includes(text);
+    });
+    if (!variants.length) {
+      variantBody.innerHTML = '<tr><td colspan="12">Нет данных</td></tr>';
+      return;
+    }
+    variantBody.innerHTML = variants
+      .map(
+        (row) => `<tr>
+          <td>${esc(row.shortId || row.id)}</td>
+          <td>${esc(row.technologyCode)}</td>
+          <td>${esc(row.materialCode)}</td>
+          <td>${esc(row.colorCode)}</td>
+          <td>${esc(row.thicknessMm)}</td>
+          <td>${esc(row.stockQty)}</td>
+          <td>${esc(row.reservedQty)}</td>
+          <td>${esc(row.consumedQty)}</td>
+          <td>${esc(row.availableQty)}</td>
+          <td>${esc(row.unit)}</td>
+          <td>${esc(row.pricePerCm3)}</td>
+          <td><span class="stock-dot stock-dot--${row.stockStatus || "ok"}"></span></td>
+        </tr>`
+      )
+      .join("");
+  }
+
+  function wireOptionToggles() {
+    document.querySelectorAll("[data-toggle-option]").forEach((node) => {
+      node.addEventListener("change", async () => {
+        const id = node.getAttribute("data-toggle-option");
+        await API.request(`/admin/options/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: `${current.materialCode || ""} ${tbody.querySelector(`[data-color-id="${id}"]`)?.value || ""} ${tbody.querySelector(`[data-thickness-id="${id}"]`)?.value || ""}мм`,
-            technologyCode: current.technologyCode || "",
-            materialCode: current.materialCode || "",
-            colorCode: tbody.querySelector(`[data-color-id="${id}"]`)?.value || "",
-            thicknessMm: tbody.querySelector(`[data-thickness-id="${id}"]`)?.value || null,
-            stockQty: Number(tbody.querySelector(`[data-stock-id="${id}"]`)?.value || 0),
-            unit: String(tbody.querySelector(`[data-unit-id="${id}"]`)?.value || "g"),
-            pricePerCm3: Number(tbody.querySelector(`[data-price-id="${id}"]`)?.value || 0),
-          }),
+          body: JSON.stringify({ active: node.checked }),
         });
         await load();
       });
     });
+  }
 
-    tbody.querySelectorAll("[data-delete-id]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const id = button.getAttribute("data-delete-id");
-        await API.request(`/admin/warehouse/items/${id}`, { method: "DELETE" });
-        await load();
-      });
-    });
-
-    const accText = String(accountingSearchEl?.value || "").trim().toLowerCase();
-    const accountingItems = items.filter((item) => {
-      const byText =
-        !accText ||
-        [item.shortId, item.id, item.materialCode, item.colorCode, item.technologyCode, item.code].join(" ").toLowerCase().includes(accText);
-      return item.itemType === "material_variant" && byText;
-    });
-    accountingBody.innerHTML =
-      accountingItems.length === 0
-        ? '<tr><td colspan="11">Нет данных</td></tr>'
-        : accountingItems
-            .map(
-              (item) => `
-      <tr>
-        <td>${esc(item.shortId || item.id)}</td>
-        <td>${esc(item.technologyCode)}</td>
-        <td>${esc(item.materialCode)}</td>
-        <td>${esc(item.colorCode)}</td>
-        <td>${esc(item.thicknessMm)}</td>
-        <td>${esc(item.stockQty)}</td>
-        <td>${esc(item.reservedQty)}</td>
-        <td>${esc(item.consumedQty)}</td>
-        <td>${esc(item.availableQty)}</td>
-        <td>${esc(item.unit)}</td>
-        <td><span class="stock-dot stock-dot--${item.stockStatus || "ok"}"></span></td>
-      </tr>`
-            )
-            .join("");
+  function render() {
+    renderTechnologies();
+    renderMaterials();
+    renderVariants();
+    wireOptionToggles();
   }
 
   async function load() {
-    const data = await API.request("/admin/warehouse/items");
-    items = data.items || [];
+    const [optionsData, itemsData] = await Promise.all([API.request("/admin/options"), API.request("/admin/warehouse/items")]);
+    options = optionsData.options || [];
+    items = itemsData.items || [];
     render();
   }
 
-  addBtn?.addEventListener("click", async () => {
-    modal.hidden = false;
-  });
-
-  document.querySelectorAll("[data-close-warehouse-modal]").forEach((node) => {
-    node.addEventListener("click", () => {
-      modal.hidden = true;
-    });
-  });
-
-  modalSubmit?.addEventListener("click", async () => {
-    if (!modalForm) return;
-    const formData = new FormData(modalForm);
-    const technologyCode = String(formData.get("technologyCode") || "").trim().toLowerCase();
-    const materialCode = String(formData.get("materialCode") || "").trim().toLowerCase();
-    const colorCode = String(formData.get("colorCode") || "").trim().toLowerCase();
-    const thicknessMm = Number(formData.get("thicknessMm") || 0);
-    const stockQty = Number(formData.get("stockQty") || 0);
-    const unit = String(formData.get("unit") || "g").trim().toLowerCase();
-    const pricePerCm3 = Number(formData.get("pricePerCm3") || 0);
-    if (!technologyCode || !materialCode || !colorCode || !Number.isFinite(thicknessMm)) return;
-    const code = `${technologyCode}-${materialCode}-${colorCode}-${thicknessMm}`;
-    const name = `${materialCode.toUpperCase()} ${colorCode} ${thicknessMm}мм`;
-    await API.request("/admin/warehouse/items", {
+  addTechBtn?.addEventListener("click", async () => {
+    const code = String(addTechCodeEl?.value || "").trim().toLowerCase();
+    const name = String(addTechNameEl?.value || "").trim();
+    if (!code || !name) return;
+    await API.request("/admin/options", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        itemType: "material_variant",
-        code,
-        name,
-        technologyCode,
-        materialCode,
-        colorCode,
-        thicknessMm,
-        stockQty,
-        unit,
-        pricePerCm3,
-        active: true,
-        sortOrder: 100,
-      }),
+      body: JSON.stringify({ type: "technology", code, name, priceDelta: 0, active: true }),
     });
-    modal.hidden = true;
-    modalForm.reset();
+    addTechCodeEl.value = "";
+    addTechNameEl.value = "";
     await load();
   });
 
-  [searchEl, accountingSearchEl].forEach((el) => el?.addEventListener("input", render));
+  addMaterialBtn?.addEventListener("click", async () => {
+    const code = String(addMaterialCodeEl?.value || "").trim().toLowerCase();
+    const name = String(addMaterialNameEl?.value || "").trim();
+    if (!code || !name) return;
+    await API.request("/admin/options", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "material", code, name, priceDelta: 0, active: true }),
+    });
+    addMaterialCodeEl.value = "";
+    addMaterialNameEl.value = "";
+    await load();
+  });
+
+  [techSearchEl, materialSearchEl, variantSearchEl].forEach((node) => node?.addEventListener("input", render));
   refreshBtn?.addEventListener("click", load);
 
   async function init() {
@@ -175,10 +165,9 @@
       API.wireLogout();
       await load();
     } catch (error) {
-      if (error.status === 401 || error.status === 403) {
-        window.location.href = "admin.html";
-      }
+      if (error.status === 401 || error.status === 403) window.location.href = "admin.html";
     }
   }
+
   init();
 })();

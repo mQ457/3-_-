@@ -29,34 +29,59 @@
       </div>
       <section class="admin-card">
         <div class="filters">
-          <input id="warehouse-search" placeholder="Поиск по технологии/материалу/цвету/толщине" />
+          <input id="warehouse-tech-search" placeholder="Поиск технологии" />
           <button class="btn-secondary" id="warehouse-refresh">Обновить</button>
-          <button class="btn-primary" id="warehouse-add">Добавить</button>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Технология</th>
-                <th>Материал</th>
-                <th>Цвет</th>
-                <th>Толщина</th>
-                <th>Количество</th>
-                <th>Ед.</th>
-                <th>Цена за см3</th>
-                <th>Индикатор</th>
-                <th>Действие</th>
+                <th>Код</th>
+                <th>Название</th>
+                <th>Активно</th>
               </tr>
             </thead>
-            <tbody id="warehouse-body"></tbody>
+            <tbody id="warehouse-tech-body"></tbody>
           </table>
+        </div>
+        <div class="grid-two" style="margin-top:12px;">
+          <label class="field"><span class="muted-small">Код технологии</span><input id="warehouse-tech-code" placeholder="fdm" /></label>
+          <label class="field"><span class="muted-small">Название технологии</span><input id="warehouse-tech-name" placeholder="FDM / FFF" /></label>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btn-primary" id="warehouse-tech-add">Добавить технологию</button>
         </div>
       </section>
 
       <section class="admin-card" style="margin-top:12px;">
         <div class="filters">
-          <input id="warehouse-accounting-search" placeholder="Поиск по ID/технологии/материалу" />
+          <input id="warehouse-material-search" placeholder="Поиск материала" />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Код</th>
+                <th>Название</th>
+                <th>Цена доп.</th>
+                <th>Активно</th>
+              </tr>
+            </thead>
+            <tbody id="warehouse-material-body"></tbody>
+          </table>
+        </div>
+        <div class="grid-two" style="margin-top:12px;">
+          <label class="field"><span class="muted-small">Код материала</span><input id="warehouse-material-code" placeholder="pla" /></label>
+          <label class="field"><span class="muted-small">Название материала</span><input id="warehouse-material-name" placeholder="PLA" /></label>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btn-primary" id="warehouse-material-add">Добавить материал</button>
+        </div>
+      </section>
+
+      <section class="admin-card" style="margin-top:12px;">
+        <div class="filters">
+          <input id="warehouse-variant-search" placeholder="Поиск складской позиции (технология/материал/цвет)" />
         </div>
         <div class="table-wrap">
           <table>
@@ -72,34 +97,15 @@
                 <th>Потрачено</th>
                 <th>Доступно</th>
                 <th>Ед.</th>
+                <th>Цена за см3</th>
                 <th>Индикатор</th>
               </tr>
             </thead>
-            <tbody id="warehouse-accounting-body"></tbody>
+            <tbody id="warehouse-variant-body"></tbody>
           </table>
         </div>
       </section>
     </main>
-  </div>
-
-  <div id="warehouse-modal" class="admin-modal" hidden>
-    <div class="admin-modal__backdrop" data-close-warehouse-modal></div>
-    <div class="admin-modal__card">
-      <h3 style="margin-top:0;">Добавить позицию на склад</h3>
-      <form id="warehouse-modal-form" class="grid-two">
-        <label class="field"><span class="muted-small">Технология</span><input name="technologyCode" required placeholder="fdm" /></label>
-        <label class="field"><span class="muted-small">Материал</span><input name="materialCode" required placeholder="pla" /></label>
-        <label class="field"><span class="muted-small">Цвет</span><input name="colorCode" required placeholder="green" /></label>
-        <label class="field"><span class="muted-small">Толщина (мм)</span><input name="thicknessMm" type="number" step="0.1" required value="0.2" /></label>
-        <label class="field"><span class="muted-small">Количество</span><input name="stockQty" type="number" step="0.01" required value="1000" /></label>
-        <label class="field"><span class="muted-small">Ед.</span><input name="unit" required value="g" /></label>
-        <label class="field"><span class="muted-small">Цена за см3</span><input name="pricePerCm3" type="number" required value="40" /></label>
-      </form>
-      <div class="actions" style="margin-top:12px;">
-        <button class="btn-secondary" type="button" data-close-warehouse-modal>Отмена</button>
-        <button class="btn-primary" type="button" id="warehouse-modal-submit">Добавить</button>
-      </div>
-    </div>
   </div>
   <script src="scripts/admin-common.js"></script>
   <script src="scripts/admin-warehouse.js"></script>

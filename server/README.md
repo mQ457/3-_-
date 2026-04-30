@@ -85,8 +85,9 @@ Environment Variables in Render:
 - `DATABASE_URL=postgresql://...` (your Neon connection string)
 - `SESSION_COOKIE_NAME=session_token`
 - `SESSION_TTL_DAYS=7`
-- `CORS_ORIGIN=https://<your-service>.onrender.com`
+- `CORS_ORIGIN=https://<your-service>.onrender.com` (if several domains are needed, separate with commas)
 - `NODE_ENV=production`
+- `AUTO_OPEN_BROWSER=0`
 - optional: `ADMIN_PHONE=+79990000000`
 - optional: `ADMIN_PASSWORD=Admin12345!`
 
@@ -94,6 +95,15 @@ Neon:
 1. Create project on `https://neon.tech`.
 2. Copy connection string and paste it into `DATABASE_URL` on Render.
 3. Redeploy Render service.
+
+## 3.1) Production readiness checklist
+
+- Set `NODE_ENV=production`.
+- Set strict `CORS_ORIGIN` to your frontend domain(s), not `*`.
+- Keep `AUTO_OPEN_BROWSER=0` in deploy.
+- Use HTTPS in production (secure cookies depend on it).
+- Rotate default admin credentials (`ADMIN_PHONE` / `ADMIN_PASSWORD`).
+- Verify health endpoint: `GET /api/health`.
 
 ## 4) API
 

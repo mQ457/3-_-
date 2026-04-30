@@ -18,12 +18,33 @@ const shouldAutoOpenBrowser = String(process.env.AUTO_OPEN_BROWSER || (!isProduc
 const webRoot = path.resolve(__dirname, "..", "..");
 const landingPagePath = path.join(webRoot, "landing.html");
 const fs = require("fs");
-console.log("webRoot:", webRoot);
-console.log("landing exists:", fs.existsSync(landingPagePath));
+const allowedOrigins = String(process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+if (!isProduction) {
+  // eslint-disable-next-line no-console
+  console.log("webRoot:", webRoot);
+  // eslint-disable-next-line no-console
+  console.log("landing exists:", fs.existsSync(landingPagePath));
+}
+
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
 
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.length === 0) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS_ORIGIN does not allow this origin"));
+    },
     credentials: true,
   })
 );
@@ -142,6 +163,19 @@ wsServer.on("connection", (socket) => {
     })
   );
 });
+
+function shutdown(signal) {
+  // eslint-disable-next-line no-console
+  console.log(`${signal} received. Shutting down gracefully...`);
+  wsServer.close(() => {
+    server.close(() => {
+      process.exit(0);
+    });
+  });
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 if (!isProduction) {
   // In some Windows/PowerShell setups the process may terminate right after start.

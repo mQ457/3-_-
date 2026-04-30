@@ -18,6 +18,15 @@
   let selectedPrintVariant = null;
   let printInventory = { technologies: [], variants: [] };
   let printOptionMaps = { technology: new Map(), material: new Map(), color: new Map(), thickness: new Map() };
+  let hasUserInteractedWithCalculator = false;
+  let priceRequestId = 0;
+  let priceLoading = false;
+  const SELECT_PLACEHOLDERS = {
+    tech: "Технологии",
+    material: "Материалы",
+    color: "Цвета",
+    thickness: "Толщина",
+  };
 
   const PRINT_TECH_TEMPLATES = [
     { code: "fdm", name: "FDM / FFF", materials: ["pla", "abs", "petg", "tpu", "nylon"], thicknesses: [0.05, 0.1, 0.2, 0.3, 0.5] },
@@ -133,6 +142,36 @@
     select.disabled = true;
   }
 
+  function setPriceValue(value) {
+    if (!sumEl) return;
+    sumEl.classList.remove("is-loading");
+    sumEl.textContent = `${Number(value || 0)} ₽`;
+  }
+
+  function setPriceLoading(isLoading) {
+    if (!sumEl) return;
+    priceLoading = isLoading;
+    if (isLoading) {
+      sumEl.classList.add("is-loading");
+      sumEl.innerHTML = '<span class="price-spinner" aria-hidden="true"></span><span class="price-loading-text">Расчет...</span>';
+      return;
+    }
+    sumEl.classList.remove("is-loading");
+  }
+
+  function hasRequiredSelections(payload) {
+    if (!payload) return false;
+    const hasCoreSelections =
+      Boolean(payload.technology) &&
+      Boolean(payload.material) &&
+      Boolean(payload.color) &&
+      Boolean(payload.thickness) &&
+      Number(payload.qty || 0) >= 1;
+    if (!hasCoreSelections) return false;
+    if (service.type !== "print") return true;
+    return Boolean(localModelFile || uploadedFile?.path);
+  }
+
   function getGlobalActiveThicknesses() {
     return Array.from(
       new Map(
@@ -169,8 +208,8 @@
     const prevThickness = String(thicknessSelect.value || "");
 
     const activeTechs = Array.from(printOptionMaps.technology.values()).filter((row) => row.active);
-    fillSelect(techSelect, [{ code: "", name: "Выберите технологию" }, ...activeTechs], (item) => {
-      const disabled = item.code ? "" : " disabled";
+    fillSelect(techSelect, [{ code: "", name: SELECT_PLACEHOLDERS.tech }, ...activeTechs], (item) => {
+      const disabled = item.code ? "" : "";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     techSelect.value = activeTechs.some((row) => row.code === prevTech) ? prevTech : "";
@@ -187,8 +226,8 @@
       .map((code) => activeMaterials.find((row) => row.code === code))
       .filter(Boolean);
     const materials = materialsFromTemplate.length ? materialsFromTemplate : activeMaterials;
-    fillSelect(materialSelect, [{ code: "", name: "Выберите материал" }, ...materials], (item) => {
-      const disabled = item.code ? "" : " disabled";
+    fillSelect(materialSelect, [{ code: "", name: SELECT_PLACEHOLDERS.material }, ...materials], (item) => {
+      const disabled = item.code ? "" : "";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     materialSelect.disabled = materials.length === 0;
@@ -203,18 +242,19 @@
     const materialCode = String(materialSelect.value || "");
     const needsNaturalColor = /steel|inconel|cobalt|alsi|ti6|powder|sand|gypsum|paper|foil|pa\d|resin/i.test(materialCode);
     const colors = needsNaturalColor ? activeColors.filter((row) => row.code === "natural") : activeColors.filter((row) => row.code !== "natural");
-    fillSelect(colorSelect, [{ code: "", name: "Выберите цвет" }, ...colors], (item) => {
-      const disabled = item.code ? "" : " disabled";
+    fillSelect(colorSelect, [{ code: "", name: SELECT_PLACEHOLDERS.color }, ...colors], (item) => {
+      const disabled = item.code ? "" : "";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     colorSelect.disabled = colors.length <= 1;
     colorSelect.value = colors.some((row) => row.code === prevColor) ? prevColor : "";
-    if (colors.length === 1) colorSelect.value = colors[0].code;
 
     const thicknesses = getThicknessesByTemplate(selectedTemplate);
-    fillSelect(thicknessSelect, thicknesses, (item) => `<option value="${item.code}">${item.name}</option>`);
+    fillSelect(thicknessSelect, [{ code: "", name: SELECT_PLACEHOLDERS.thickness }, ...thicknesses], (item) => {
+      return `<option value="${item.code}">${item.name}</option>`;
+    });
     thicknessSelect.disabled = thicknesses.length === 0;
-    thicknessSelect.value = thicknesses.some((row) => row.code === prevThickness) ? prevThickness : (thicknesses[0]?.code || "");
+    thicknessSelect.value = thicknesses.some((row) => row.code === prevThickness) ? prevThickness : "";
   }
 
   function syncPrintSelectors() {
@@ -231,8 +271,8 @@
 
     const activeTechCodes = new Set(printInventory.technologies.map((item) => item.code));
     const allowedTechs = PRINT_TECH_TEMPLATES.filter((tech) => activeTechCodes.has(tech.code));
-    fillSelect(techSelect, [{ code: "", name: "Выберите технологию" }, ...allowedTechs], (item) => {
-      const disabled = item.code ? "" : " disabled";
+    fillSelect(techSelect, [{ code: "", name: SELECT_PLACEHOLDERS.tech }, ...allowedTechs], (item) => {
+      const disabled = item.code ? "" : "";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     techSelect.value = allowedTechs.some((tech) => tech.code === prevTech) ? prevTech : "";
@@ -255,8 +295,8 @@
         code,
         name: printOptionMaps.material.get(code)?.name || formatOptionName(code),
       }));
-    fillSelect(materialSelect, [{ code: "", name: "Выберите материал" }, ...materials], (item) => {
-      const disabled = item.code ? "" : " disabled";
+    fillSelect(materialSelect, [{ code: "", name: SELECT_PLACEHOLDERS.material }, ...materials], (item) => {
+      const disabled = item.code ? "" : "";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     materialSelect.disabled = materials.length === 0;
@@ -264,7 +304,9 @@
     if (!materialSelect.value) {
       setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
       const fallbackThicknesses = getThicknessesByTemplate(selectedTechTemplate);
-      fillSelect(thicknessSelect, fallbackThicknesses, (item) => `<option value="${item.code}">${item.name}</option>`);
+      fillSelect(thicknessSelect, [{ code: "", name: SELECT_PLACEHOLDERS.thickness }, ...fallbackThicknesses], (item) => {
+        return `<option value="${item.code}">${item.name}</option>`;
+      });
       thicknessSelect.disabled = fallbackThicknesses.length === 0;
       selectedPrintVariant = null;
       return;
@@ -274,15 +316,12 @@
     const colorCandidates = Array.from(new Map(materialVariants.map((variant) => [variant.colorCode, variant.colorName])).entries()).map(
       ([code, name]) => ({ code, name: name || printOptionMaps.color.get(code)?.name || formatOptionName(code) })
     );
-    fillSelect(colorSelect, [{ code: "", name: "Выберите цвет" }, ...colorCandidates], (item) => {
-      const disabled = item.code ? "" : " disabled";
+    fillSelect(colorSelect, [{ code: "", name: SELECT_PLACEHOLDERS.color }, ...colorCandidates], (item) => {
+      const disabled = item.code ? "" : "";
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     colorSelect.value = colorCandidates.some((item) => item.code === prevColor) ? prevColor : "";
     colorSelect.disabled = colorCandidates.length <= 1;
-    if (colorCandidates.length === 1) {
-      colorSelect.value = colorCandidates[0].code;
-    }
     const thicknessSource = colorSelect.value
       ? materialVariants.filter((variant) => variant.colorCode === colorSelect.value)
       : materialVariants;
@@ -291,9 +330,11 @@
       .sort((a, b) => a - b)
       .map((value) => ({ code: String(value), name: formatThicknessLabel(value) }));
     thicknessSelect.disabled = thicknesses.length === 0;
-    fillSelect(thicknessSelect, thicknesses, (item) => `<option value="${item.code}">${item.name}</option>`);
+    fillSelect(thicknessSelect, [{ code: "", name: SELECT_PLACEHOLDERS.thickness }, ...thicknesses], (item) => {
+      return `<option value="${item.code}">${item.name}</option>`;
+    });
     if (thicknesses.length && thicknesses.some((item) => item.code === prevThickness)) thicknessSelect.value = prevThickness;
-    else if (thicknesses.length) thicknessSelect.value = thicknesses[0].code;
+    else if (thicknesses.length) thicknessSelect.value = "";
     else setDisabledPlaceholder(thicknessSelect, "Нет доступной толщины");
     pickPrintVariant();
   }
@@ -344,25 +385,34 @@
 
   async function updatePrice() {
     if (!form || !sumEl) return;
-    if (service.type === "print") {
-      const payload = buildPayload();
-      if (!payload.technology || !payload.material || !payload.color || !payload.thickness || payload.qty < 1) {
-        sumEl.textContent = "0 ₽";
-        return;
-      }
+    const payload = buildPayload();
+    if (!hasUserInteractedWithCalculator || !hasRequiredSelections(payload)) {
+      setPriceLoading(false);
+      setPriceValue(0);
+      syncCheckoutLinksHref();
+      return;
     }
+    const requestId = ++priceRequestId;
+    setPriceLoading(true);
     try {
       const data = await request("/orders/price-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
+        body: JSON.stringify(payload),
       });
-      sumEl.textContent = `${data.totalAmount || 0} ₽`;
+      if (requestId !== priceRequestId) return;
+      setPriceLoading(false);
+      setPriceValue(data.totalAmount || 0);
       syncCheckoutLinksHref();
       if (service.type === "print") {
         pickPrintVariant();
       }
-    } catch (_error) {}
+    } catch (_error) {
+      if (requestId !== priceRequestId) return;
+      setPriceLoading(false);
+      setPriceValue(0);
+      syncCheckoutLinksHref();
+    }
   }
 
   function meshVolumeCm3(THREE, mesh) {
@@ -739,6 +789,7 @@
             const mesh = new THREE.Mesh(geometry, material);
             modelVolumeCm3 = estimateObjectVolumeCm3(THREE, mesh);
             updateVolumeUi();
+            hasUserInteractedWithCalculator = true;
             updatePrice();
             geometry.computeBoundingBox();
             const bbox = geometry.boundingBox;
@@ -759,6 +810,7 @@
             if (generation !== viewerGeneration) return;
             modelVolumeCm3 = estimateObjectVolumeCm3(THREE, object);
             updateVolumeUi();
+            hasUserInteractedWithCalculator = true;
             updatePrice();
             normalizeObject(object);
             scene.add(object);
@@ -774,6 +826,7 @@
             if (generation !== viewerGeneration) return;
             modelVolumeCm3 = estimateObjectVolumeCm3(THREE, object);
             updateVolumeUi();
+            hasUserInteractedWithCalculator = true;
             updatePrice();
             normalizeObject(object);
             scene.add(object);
@@ -793,6 +846,7 @@
             }
             modelVolumeCm3 = estimateObjectVolumeCm3(THREE, object);
             updateVolumeUi();
+            hasUserInteractedWithCalculator = true;
             updatePrice();
             normalizeObject(object);
             scene.add(object);
@@ -808,6 +862,7 @@
             if (generation !== viewerGeneration) return;
             modelVolumeCm3 = estimateObjectVolumeCm3(THREE, object);
             updateVolumeUi();
+            hasUserInteractedWithCalculator = true;
             updatePrice();
             normalizeObject(object);
             scene.add(object);
@@ -916,8 +971,9 @@
       attachModelingNotepad();
       await attachModelUpload();
       initCheckoutLinks();
-      await updatePrice();
+      setPriceValue(0);
       form?.elements?.tech?.addEventListener("change", () => {
+        hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           syncPrintSelectors();
           updatePrice();
@@ -927,6 +983,7 @@
         }
       });
       form?.elements?.material?.addEventListener("change", () => {
+        hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           syncPrintSelectors();
           updatePrice();
@@ -936,6 +993,7 @@
         }
       });
       form?.elements?.color?.addEventListener("change", () => {
+        hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           syncPrintSelectors();
           updatePrice();
@@ -945,13 +1003,20 @@
         }
       });
       form?.elements?.thickness?.addEventListener("change", () => {
+        hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           pickPrintVariant();
           updatePrice();
         }
       });
-      form?.addEventListener("change", updatePrice);
-      form?.addEventListener("input", updatePrice);
+      form?.addEventListener("change", () => {
+        hasUserInteractedWithCalculator = true;
+        updatePrice();
+      });
+      form?.addEventListener("input", () => {
+        hasUserInteractedWithCalculator = true;
+        updatePrice();
+      });
     } catch (_error) {}
   }
 

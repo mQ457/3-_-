@@ -64,9 +64,11 @@
   }
 
   async function loadProfile() {
+    setStatus("Загружаем профиль...", false);
     try {
       const data = await API.request("/profile/me", { method: "GET" });
       fillProfile(data.profile || {});
+      setStatus("", false);
     } catch (error) {
       if (error.status === 401) {
         window.location.replace("login.html");
@@ -102,6 +104,7 @@
   });
 
   async function loadThreads() {
+    supportMessages.innerHTML = '<div class="support-loading"><span class="inline-spinner" aria-hidden="true"></span><span>Загружаем обращения...</span></div>';
     try {
       const data = await API.request("/profile/support/threads", { method: "GET" });
       const threads = data.threads || [];
@@ -184,6 +187,7 @@
 
   async function loadMessages() {
     if (!activeThreadId) return;
+    supportMessages.innerHTML = '<div class="support-loading"><span class="inline-spinner" aria-hidden="true"></span><span>Загружаем переписку...</span></div>';
     try {
       const data = await API.request(`/profile/support/threads/${activeThreadId}/messages`, { method: "GET" });
       const messages = data.messages || [];

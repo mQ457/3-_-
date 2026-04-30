@@ -1,6 +1,8 @@
 (function () {
   const API = window.AppBootstrap;
   const tbody = document.querySelector(".orders-table tbody");
+  const TOGGLE_ICON_OPEN = "image/Frame_1_829.png";
+  const TOGGLE_ICON_CLOSE = "image/Frame_1_849.png";
   const doneStatuses = new Set(["Завершен", "Готов к выдаче", "Модель готова", "Отправлен"]);
   const progressStatuses = new Set(["В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
 
@@ -113,7 +115,9 @@
         <td>${safeOrderDate}</td>
         <td>${safeAmount}</td>
         <td>
-          <button class="btn btn-ghost js-toggle-order orders-toggle-btn" type="button" data-order-id="${escapeHtml(order.id)}" aria-label="Развернуть"><img src="image/Frame_1_829.png" alt="exit"></button>
+          <button class="btn btn-ghost js-toggle-order orders-toggle-btn" type="button" data-order-id="${escapeHtml(order.id)}" aria-label="Развернуть">
+            <img src="${TOGGLE_ICON_OPEN}" alt="Открыть детали заказа">
+          </button>
         </td>
       </tr>
       <tr class="js-order-details orders-row-details" data-order-id="${escapeHtml(order.id)}" style="display:none;">
@@ -144,8 +148,8 @@
             </section>
             <section class="order-details-block order-details-block--actions">
               <div class="order-details-title">Действия</div>
-              <a class="order-details-link ${hasFile ? "" : "is-disabled"}" href="${fileHref}" ${hasFile ? "target=\"_blank\" rel=\"noopener noreferrer\"" : "aria-disabled=\"true\""}>Скачать файл</a>
-              <button class="order-details-link order-details-link--btn" type="button" data-open-order-chat="${escapeHtml(order.id)}">Задать вопрос</button>
+              <a class="order-details-link ${hasFile ? "" : "is-disabled"}" href="${fileHref}" ${hasFile ? "target=\"_blank\" rel=\"noopener noreferrer\" download" : "aria-disabled=\"true\""}>Скачать файл</a>
+              <a class="order-details-link order-details-link--btn" href="profile.html#support-form">Задать вопрос</a>
             </section>
           </div>
         </td>
@@ -153,6 +157,13 @@
   }
 
   async function loadOrders() {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="table-loading-cell">
+          <span class="inline-spinner" aria-hidden="true"></span>
+          <span>Загружаем заказы...</span>
+        </td>
+      </tr>`;
     try {
       const data = await API.request("/orders");
       if (!data.orders || data.orders.length === 0) {
@@ -170,14 +181,11 @@
           if (!row) return;
           const opened = row.style.display !== "none";
           row.style.display = opened ? "none" : "table-row";
-          button.textContent = opened ? "⌄" : "⌃";
-        });
-      });
-      tbody.querySelectorAll("[data-open-order-chat]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const orderId = button.getAttribute("data-open-order-chat");
-          if (!orderId) return;
-          window.dispatchEvent(new CustomEvent("order-chat:open", { detail: { orderId } }));
+          const icon = button.querySelector("img");
+          if (icon) {
+            icon.src = opened ? TOGGLE_ICON_OPEN : TOGGLE_ICON_CLOSE;
+            icon.alt = opened ? "Открыть детали заказа" : "Скрыть детали заказа";
+          }
         });
       });
     } catch (error) {

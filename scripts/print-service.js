@@ -21,6 +21,7 @@
   let hasUserInteractedWithCalculator = false;
   let priceRequestId = 0;
   let priceLoading = false;
+  let priceLoadingStartedAt = 0;
   const SELECT_PLACEHOLDERS = {
     tech: "Технологии",
     material: "Материалы",
@@ -152,11 +153,22 @@
     if (!sumEl) return;
     priceLoading = isLoading;
     if (isLoading) {
+      priceLoadingStartedAt = Date.now();
       sumEl.classList.add("is-loading");
       sumEl.innerHTML = '<span class="price-spinner" aria-hidden="true"></span><span class="price-loading-text">Расчет...</span>';
       return;
     }
     sumEl.classList.remove("is-loading");
+  }
+
+  async function stopPriceLoadingWithMinDelay() {
+    if (!priceLoading) return;
+    const elapsed = Date.now() - Number(priceLoadingStartedAt || 0);
+    const minVisibleMs = 300;
+    if (elapsed < minVisibleMs) {
+      await new Promise((resolve) => setTimeout(resolve, minVisibleMs - elapsed));
+    }
+    setPriceLoading(false);
   }
 
   function hasRequiredSelections(payload) {
@@ -401,7 +413,7 @@
         body: JSON.stringify(payload),
       });
       if (requestId !== priceRequestId) return;
-      setPriceLoading(false);
+      await stopPriceLoadingWithMinDelay();
       setPriceValue(data.totalAmount || 0);
       syncCheckoutLinksHref();
       if (service.type === "print") {
@@ -409,7 +421,7 @@
       }
     } catch (_error) {
       if (requestId !== priceRequestId) return;
-      setPriceLoading(false);
+      await stopPriceLoadingWithMinDelay();
       setPriceValue(0);
       syncCheckoutLinksHref();
     }

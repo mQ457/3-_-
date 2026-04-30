@@ -1512,6 +1512,31 @@ button.model-panel__file-name {
   border-radius: 10px !important;
 }
 
+.orders-toggle-btn img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.table-loading-cell {
+  text-align: center;
+  color: rgba(15, 23, 42, .72);
+  font-weight: 900;
+  padding: 18px 14px !important;
+}
+
+.inline-spinner {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 8px;
+  border: 2px solid rgba(214, 59, 42, 0.25);
+  border-top-color: var(--accent2);
+  border-radius: 50%;
+  animation: processing-spin .8s linear infinite;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -1622,6 +1647,12 @@ button.model-panel__file-name {
 .order-details-link[aria-disabled="true"] {
   pointer-events: none;
   opacity: .55;
+}
+
+.support-loading {
+  padding: 8px 0;
+  color: rgba(15, 23, 42, .72);
+  font-weight: 800;
 }
 
 @media (max-width: 980px) {

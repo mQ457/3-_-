@@ -94,6 +94,10 @@
         body: JSON.stringify(payload),
       });
       fillProfile(data.profile || {});
+      API.setCachedUser?.({
+        ...(window.__APP_USER__ || {}),
+        ...(data.profile || {}),
+      });
       setStatus("Данные сохранены.", false);
     } catch (error) {
       setStatus(error.message, true);

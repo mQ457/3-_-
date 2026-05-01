@@ -226,17 +226,19 @@
 
   function hasRequiredSelections(payload) {
     if (!payload) return false;
-    const hasCoreSelections =
+    const hasQty = Number(payload.qty || 0) >= 1;
+    if (!hasQty) return false;
+    if (service.type !== "print") {
+      // Для сканирования и моделирования цена должна считаться даже при
+      // неполном наборе селекторов (часть полей может быть неактивной).
+      return true;
+    }
+    const hasPrintSelections =
       Boolean(payload.technology) &&
       Boolean(payload.material) &&
       Boolean(payload.color) &&
-      Boolean(payload.thickness) &&
-      Number(payload.qty || 0) >= 1;
-    if (!hasCoreSelections) return false;
-    if (service.type === "modeling") {
-      return Boolean(String(payload.modelingTask || "").trim());
-    }
-    if (service.type !== "print") return true;
+      Boolean(payload.thickness);
+    if (!hasPrintSelections) return false;
     return Boolean(localModelFile || uploadedFile?.path);
   }
 
@@ -300,6 +302,7 @@
     });
     materialSelect.disabled = materials.length === 0;
     materialSelect.value = materials.some((row) => row.code === prevMaterial) ? prevMaterial : "";
+    if (!materialSelect.value && materials.length === 1) materialSelect.value = materials[0].code;
     if (!materialSelect.value) {
       resetSelectWithPlaceholder(colorSelect, "color", true);
       resetSelectWithPlaceholder(thicknessSelect, "thickness", true);
@@ -316,6 +319,7 @@
     });
     colorSelect.disabled = colors.length <= 1;
     colorSelect.value = colors.some((row) => row.code === prevColor) ? prevColor : "";
+    if (!colorSelect.value && colors.length === 1) colorSelect.value = colors[0].code;
 
     const thicknesses = getThicknessesByTemplate(selectedTemplate);
     fillSelect(thicknessSelect, [{ code: "", name: SELECT_PLACEHOLDERS.thickness }, ...thicknesses], (item) => {
@@ -323,6 +327,7 @@
     });
     thicknessSelect.disabled = thicknesses.length === 0;
     thicknessSelect.value = thicknesses.some((row) => row.code === prevThickness) ? prevThickness : "";
+    if (!thicknessSelect.value && thicknesses.length === 1) thicknessSelect.value = thicknesses[0].code;
   }
 
   function syncPrintSelectors() {
@@ -369,6 +374,7 @@
     });
     materialSelect.disabled = materials.length === 0;
     materialSelect.value = materials.some((item) => item.code === prevMaterial) ? prevMaterial : "";
+    if (!materialSelect.value && materials.length === 1) materialSelect.value = materials[0].code;
     if (!materialSelect.value) {
       resetSelectWithPlaceholder(colorSelect, "color", true);
       const fallbackThicknesses = getThicknessesByTemplate(selectedTechTemplate);
@@ -376,6 +382,7 @@
         return `<option value="${item.code}">${item.name}</option>`;
       });
       thicknessSelect.disabled = fallbackThicknesses.length === 0;
+      if (fallbackThicknesses.length === 1) thicknessSelect.value = fallbackThicknesses[0].code;
       selectedPrintVariant = null;
       return;
     }
@@ -389,6 +396,7 @@
       return `<option value="${item.code}"${disabled}>${item.name}</option>`;
     });
     colorSelect.value = colorCandidates.some((item) => item.code === prevColor) ? prevColor : "";
+    if (!colorSelect.value && colorCandidates.length === 1) colorSelect.value = colorCandidates[0].code;
     colorSelect.disabled = colorCandidates.length <= 1;
     const thicknessSource = colorSelect.value
       ? materialVariants.filter((variant) => variant.colorCode === colorSelect.value)
@@ -403,7 +411,8 @@
     });
     if (thicknesses.length && thicknesses.some((item) => item.code === prevThickness)) thicknessSelect.value = prevThickness;
     else if (thicknesses.length) thicknessSelect.value = "";
-    else setDisabledPlaceholder(thicknessSelect, "Нет доступной толщины");
+    if (!thicknesses.length) setDisabledPlaceholder(thicknessSelect, "Нет доступной толщины");
+    else if (!thicknessSelect.value && thicknesses.length === 1) thicknessSelect.value = thicknesses[0].code;
     pickPrintVariant();
   }
 

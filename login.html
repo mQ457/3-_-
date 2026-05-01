@@ -15,14 +15,37 @@
         <h1 style="color: var(--accent);">Добро пожаловать!</h1>
         <div class="sub">Мы рады видеть тебя</div>
 
-        <form id="auth-form" class="login-form">
+        <form id="auth-form" class="login-form" data-auth-mode="login">
+          <div id="register-extra-fields" style="display:none;">
+            <label class="field">
+              <span class="label">Фамилия</span>
+              <input class="input" type="text" name="lastName" placeholder="Введите фамилию" />
+            </label>
+            <label class="field" style="margin-top: 10px;">
+              <span class="label">Имя</span>
+              <input class="input" type="text" name="firstName" placeholder="Введите имя" />
+            </label>
+            <label class="field" style="margin-top: 10px;">
+              <span class="label">Отчество</span>
+              <input class="input" type="text" name="middleName" placeholder="Введите отчество" />
+            </label>
+            <label class="field" style="margin-top: 10px;">
+              <span class="label">Почта</span>
+              <input class="input" type="email" name="email" inputmode="email" autocomplete="email" placeholder="name@email.com" />
+            </label>
+          </div>
           <label class="field">
             <span class="label">Номер телефона</span>
             <input class="input" type="tel" name="phone" inputmode="numeric" autocomplete="tel" maxlength="16" placeholder="+79991234567" required />
           </label>
           <label class="field">
             <span class="label">Пароль</span>
-            <input class="input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
+            <div class="password-peek">
+              <input class="input password-peek__input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
+              <button class="password-peek__btn" id="password-peek-btn" type="button" aria-label="Показать пароль">
+                <img src="image/Frame_1_273.png" alt="Показать пароль" />
+              </button>
+            </div>
           </label>
           <label class="login-consent">
             <input type="checkbox" id="policy-consent" />
@@ -37,6 +60,9 @@
           </button>
           <button id="register-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
             Создать аккаунт
+          </button>
+          <button id="back-to-login-btn" class="btn btn-ghost" type="button" style="margin-top:2px; display:none;">
+            Назад ко входу
           </button>
 
           <div id="auth-status" class="login-note" aria-live="polite"></div>

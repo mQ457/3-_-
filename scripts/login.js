@@ -2,11 +2,16 @@
   const API_BASE = "/api";
   const form = document.getElementById("auth-form");
   const phoneInput = form?.elements?.phone;
+  const passwordInput = form?.elements?.password;
+  const passwordPeekBtn = document.getElementById("password-peek-btn");
   const registerBtn = document.getElementById("register-btn");
+  const backToLoginBtn = document.getElementById("back-to-login-btn");
+  const registerExtraFields = document.getElementById("register-extra-fields");
   const statusEl = document.getElementById("auth-status");
   const LOGOUT_FLAG_KEY = "app.loggedOut";
   const POST_LOGIN_REDIRECT_KEY = "app.postLoginRedirect";
   const consentEl = document.getElementById("policy-consent");
+  let authMode = "login";
   const ALLOWED_REDIRECTS = new Set([
     "checkout.html",
     "profile.html",
@@ -43,6 +48,10 @@
     return {
       phone: normalizePhoneInput(formData.get("phone")),
       password: String(formData.get("password") || ""),
+      lastName: String(formData.get("lastName") || "").trim(),
+      firstName: String(formData.get("firstName") || "").trim(),
+      middleName: String(formData.get("middleName") || "").trim(),
+      email: String(formData.get("email") || "").trim(),
     };
   }
 
@@ -61,6 +70,27 @@
     phoneInput.addEventListener("input", () => {
       phoneInput.value = normalizePhoneInput(phoneInput.value);
     });
+  }
+
+  function setupPasswordPeek() {
+    if (!passwordInput || !passwordPeekBtn) return;
+    const showPassword = () => {
+      passwordInput.type = "text";
+    };
+    const hidePassword = () => {
+      passwordInput.type = "password";
+    };
+
+    passwordPeekBtn.addEventListener("mousedown", showPassword);
+    passwordPeekBtn.addEventListener("mouseup", hidePassword);
+    passwordPeekBtn.addEventListener("mouseleave", hidePassword);
+    passwordPeekBtn.addEventListener("touchstart", (event) => {
+      event.preventDefault();
+      showPassword();
+    }, { passive: false });
+    passwordPeekBtn.addEventListener("touchend", hidePassword);
+    passwordPeekBtn.addEventListener("touchcancel", hidePassword);
+    passwordPeekBtn.addEventListener("blur", hidePassword);
   }
 
   function isValidPhone(value) {
@@ -102,6 +132,33 @@
     return true;
   }
 
+  function isValidEmail(value) {
+    const email = String(value || "").trim();
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function validateRegisterProfile(payload) {
+    if (!payload.lastName || !payload.firstName || !payload.middleName) {
+      setStatus("Заполните Фамилию, Имя и Отчество.", true);
+      return false;
+    }
+    if (!isValidEmail(payload.email)) {
+      setStatus("Введите корректный email.", true);
+      return false;
+    }
+    return true;
+  }
+
+  function setAuthMode(nextMode) {
+    authMode = nextMode === "register" ? "register" : "login";
+    form?.setAttribute("data-auth-mode", authMode);
+    if (registerExtraFields) registerExtraFields.style.display = authMode === "register" ? "block" : "none";
+    if (backToLoginBtn) backToLoginBtn.style.display = authMode === "register" ? "inline-flex" : "none";
+    if (registerBtn) registerBtn.textContent = authMode === "register" ? "Зарегистрироваться" : "Создать аккаунт";
+    setStatus("", false);
+  }
+
   function hasConsent() {
     if (consentEl?.checked) return true;
     setStatus("Подтвердите согласие на обработку персональных данных.", true);
@@ -130,9 +187,15 @@
   });
 
   registerBtn?.addEventListener("click", async () => {
+    if (authMode !== "register") {
+      setAuthMode("register");
+      setStatus("Заполните поля регистрации и нажмите «Зарегистрироваться».", false);
+      return;
+    }
     if (!hasConsent()) return;
     const payload = getPayload();
     if (!validateCredentials(payload)) return;
+    if (!validateRegisterProfile(payload)) return;
     setStatus("Создаём аккаунт...", false);
     try {
       const data = await request("/auth/register", "POST", payload);
@@ -150,6 +213,10 @@
     }
   });
 
+  backToLoginBtn?.addEventListener("click", () => {
+    setAuthMode("login");
+  });
+
   request("/auth/me", "GET")
     .then((data) => {
       window.location.href = consumePostAuthTarget(data?.user?.role);
@@ -157,4 +224,6 @@
     .catch(() => {});
 
   setupPhoneInput();
+  setupPasswordPeek();
+  setAuthMode("login");
 })();

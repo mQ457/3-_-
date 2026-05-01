@@ -25,6 +25,26 @@
     const safeAddress = (order.address || "").replace(/</g, "&lt;");
     const safeTask = (order.modelingTask || "").replace(/</g, "&lt;");
     const safeFilePath = (order.filePath || "").replace(/"/g, "&quot;");
+    const safeName = (order.user?.fullName || "—").replace(/</g, "&lt;");
+    const safePhone = (order.user?.phone || "—").replace(/</g, "&lt;");
+    const safeEmail = (order.user?.email || "—").replace(/</g, "&lt;");
+    const safeOrderId = (order.id || "—").replace(/</g, "&lt;");
+    const safeServiceType = (order.serviceType || "—").replace(/</g, "&lt;");
+    const safeCardMask = (order.cardMask || "—").replace(/</g, "&lt;");
+    const safeFileName = (order.fileName || "Не указано").replace(/</g, "&lt;");
+    const safeFileSize = Number(order.fileSize || 0) > 0 ? `${Number(order.fileSize).toLocaleString("ru-RU")} Б` : "Не указано";
+    const details = order.details || {};
+    const safeQty = Number(details.qty || 0) > 0 ? Number(details.qty).toLocaleString("ru-RU") : "Не указано";
+    const safeTechnology = String(details.technology || "Не указано").replace(/</g, "&lt;");
+    const safeMaterial = String(details.material || "Не указано").replace(/</g, "&lt;");
+    const safeColor = String(details.color || "Не указано").replace(/</g, "&lt;");
+    const safeThickness =
+      Number(details.thickness || 0) > 0 ? `${String(details.thickness).replace(".", ",")} мм` : "Не указано";
+    const safeVolume =
+      Number(details.modelVolumeCm3 || 0) > 0 ? `${Number(details.modelVolumeCm3).toLocaleString("ru-RU")} см3` : "Не указано";
+    const safeComplexity = Number(details.complexity || 0) > 0 ? Number(details.complexity).toLocaleString("ru-RU") : "Не указано";
+    const safeHours =
+      Number(details.estimatedHours || 0) > 0 ? Number(details.estimatedHours).toLocaleString("ru-RU") : "Не указано";
     return `
       <tr class="admin-orders-row-main">
         <td>${order.orderNumber || order.id.slice(0, 8)}</td>
@@ -45,25 +65,47 @@
       </tr>
       <tr class="admin-orders-row-details" data-order-id="${order.id}" style="display:none;">
         <td colspan="8">
-          <div class="admin-order-details">
-            <div>
-              <div class="admin-order-details__title">Полная информация</div>
-              <div>${order.user?.fullName || "—"}</div>
-              <div>${order.user?.phone || "—"}</div>
-              <div>${order.user?.email || "—"}</div>
-            </div>
-            <div>
-              <div class="admin-order-details__title">Адрес доставки</div>
-              <div>${safeAddress || "<span class=\"admin-order-warning\">Адрес не указан</span>"}</div>
-              <div class="admin-order-details__sub">Карта: ${order.cardMask || "—"}</div>
-              <div class="admin-order-details__sub">ТЗ: ${safeTask || "—"}</div>
-            </div>
-            <div>
+          <div class="admin-order-details-panel">
+            <section class="admin-order-details-block">
+              <div class="admin-order-details__title">Контактные данные</div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">ФИО</span><span class="admin-order-kv__value">${safeName}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Телефон</span><span class="admin-order-kv__value">${safePhone}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Email</span><span class="admin-order-kv__value">${safeEmail}</span></div>
+            </section>
+            <section class="admin-order-details-block">
+              <div class="admin-order-details__title">Заказ и доставка</div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">ID заказа</span><span class="admin-order-kv__value">${safeOrderId}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Тип услуги</span><span class="admin-order-kv__value">${safeServiceType}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Адрес доставки</span><span class="admin-order-kv__value">${safeAddress || "Не указано"}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Карта оплаты</span><span class="admin-order-kv__value">${safeCardMask}</span></div>
+            </section>
+            <section class="admin-order-details-block">
+              <div class="admin-order-details__title">Параметры производства</div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Количество</span><span class="admin-order-kv__value">${safeQty}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Технология</span><span class="admin-order-kv__value">${safeTechnology}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Материал</span><span class="admin-order-kv__value">${safeMaterial}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Цвет</span><span class="admin-order-kv__value">${safeColor}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Толщина</span><span class="admin-order-kv__value">${safeThickness}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Объем модели</span><span class="admin-order-kv__value">${safeVolume}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Сложность</span><span class="admin-order-kv__value">${safeComplexity}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Оценка часов</span><span class="admin-order-kv__value">${safeHours}</span></div>
+            </section>
+            <section class="admin-order-details-block">
+              <div class="admin-order-details__title">Файл и комментарий</div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Файл</span><span class="admin-order-kv__value">${safeFileName}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Размер файла</span><span class="admin-order-kv__value">${safeFileSize}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">ТЗ</span><span class="admin-order-kv__value">${safeTask || "Не указано"}</span></div>
+            </section>
+            <section class="admin-order-details-block admin-order-details-block--actions">
               <div class="admin-order-details__title">Действия</div>
               <button class="btn-secondary" data-order-user="${order.user?.id || ""}">Профиль</button>
               <button class="btn-secondary" data-open-order-notify="${order.orderNumber || order.id}">Уведомить клиента</button>
-              ${safeFilePath ? `<a class="admin-order-details__link" href="${safeFilePath}" target="_blank" rel="noopener noreferrer">Скачать файл</a>` : ""}
-            </div>
+              ${
+                safeFilePath
+                  ? `<a class="admin-order-details__link" href="${safeFilePath}" target="_blank" rel="noopener noreferrer">Скачать файл</a>`
+                  : ""
+              }
+            </section>
           </div>
         </td>
       </tr>`;

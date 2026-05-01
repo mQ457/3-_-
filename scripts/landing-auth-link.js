@@ -4,28 +4,39 @@
 
   const profileUrl = "profile.html";
   const authUrl = "login.html";
+  let resolvedHref = authUrl;
+  let authCheckPromise = null;
 
-  async function isAuthorized() {
+  cabinetLink.setAttribute("href", authUrl);
+
+  async function isAuthorizedOnce() {
+    if (authCheckPromise) return authCheckPromise;
+    authCheckPromise = (async () => {
+      if (!window.AppBootstrap || typeof window.AppBootstrap.request !== "function") {
+        return false;
+      }
+      try {
+        await window.AppBootstrap.request("/auth/me", { method: "GET", cache: "no-store" });
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    })();
     try {
-      await window.AppBootstrap.request("/auth/me", { method: "GET", cache: "no-store" });
-      return true;
+      return await authCheckPromise;
     } catch (_error) {
       return false;
     }
   }
 
-  async function resolveCabinetTarget() {
-    const authorized = await isAuthorized();
-    return authorized ? profileUrl : authUrl;
+  async function warmCabinetTarget() {
+    const authorized = await isAuthorizedOnce();
+    resolvedHref = authorized ? profileUrl : authUrl;
+    cabinetLink.setAttribute("href", resolvedHref);
   }
 
-  resolveCabinetTarget().then((target) => {
-    cabinetLink.setAttribute("href", target);
-  });
-
-  cabinetLink.addEventListener("click", async (event) => {
-    event.preventDefault();
-    const target = await resolveCabinetTarget();
-    window.location.href = target;
+  warmCabinetTarget().catch(() => {
+    resolvedHref = authUrl;
+    cabinetLink.setAttribute("href", resolvedHref);
   });
 })();

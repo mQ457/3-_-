@@ -116,6 +116,7 @@
     if (!form) return;
     try {
       const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "{}");
+      if (!draft || typeof draft !== "object") return null;
       if (draft && typeof draft === "object") {
         if (Number(draft.qty) > 0 && form.elements.qty) {
           form.elements.qty.value = String(Number(draft.qty));
@@ -125,7 +126,14 @@
         if (typeof draft.color === "string" && form.elements.color) form.elements.color.value = draft.color;
         if (typeof draft.thickness === "string" && form.elements.thickness) form.elements.thickness.value = draft.thickness;
       }
-      return draft;
+      const hasMeaningfulData =
+        Boolean(String(draft.tech || "").trim()) ||
+        Boolean(String(draft.material || "").trim()) ||
+        Boolean(String(draft.color || "").trim()) ||
+        Boolean(String(draft.thickness || "").trim()) ||
+        Number(draft.qty || 0) > 1 ||
+        Boolean(String(draft.modelingTask || "").trim());
+      return hasMeaningfulData ? draft : null;
     } catch (_error) {
       return null;
     }
@@ -427,18 +435,9 @@
       const availableTechCodes = new Set(printInventory.variants.map((variant) => variant.technologyCode));
       printInventory.technologies = printInventory.technologies.filter((item) => availableTechCodes.has(item.code));
     }
-    const fill = (name, items, mapper) => {
-      const select = form.elements[name];
-      if (!select || !Array.isArray(items)) return;
-      select.innerHTML = items
-        .filter((item) => item.active)
-        .map((item) => (typeof mapper === "function" ? mapper(item) : `<option value="${item.code}">${item.name}</option>`))
-        .join("");
-    };
-    fill("material", options.material || []);
-    fill("tech", options.technology || []);
-    fill("color", options.color || []);
-    fill("thickness", options.thickness || []);
+    // Do not prefill options directly on initial load, otherwise browser picks
+    // first values and price state looks "selected" before user interaction.
+    // Selectors are populated by sync*Selectors with explicit placeholders.
     if (service.type === "print") syncPrintSelectors();
     else syncNonPrintSelectors();
   }
@@ -1055,6 +1054,7 @@
 
   async function init() {
     try {
+      setPriceLoading(true);
       await loadOptions();
       const restoredDraft = restoreDraft();
       if (restoredDraft) {
@@ -1066,6 +1066,7 @@
       attachModelingNotepad();
       await attachModelUpload();
       initCheckoutLinks();
+      setPriceLoading(false);
       setPriceValue(0);
       form?.elements?.tech?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
@@ -1118,7 +1119,10 @@
         saveDraft();
         schedulePriceUpdate(350);
       });
-    } catch (_error) {}
+    } catch (_error) {
+      setPriceLoading(false);
+      setPriceValue(0);
+    }
   }
 
   init();

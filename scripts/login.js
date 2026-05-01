@@ -1,17 +1,22 @@
 (function () {
   const API_BASE = "/api";
-  const form = document.getElementById("auth-form");
-  const phoneInput = form?.elements?.phone;
-  const passwordInput = form?.elements?.password;
-  const passwordPeekBtn = document.getElementById("password-peek-btn");
-  const registerBtn = document.getElementById("register-btn");
+  const loginPanel = document.getElementById("login-panel");
+  const registerPanel = document.getElementById("register-panel");
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+  const loginPhoneInput = loginForm?.elements?.phone;
+  const registerPhoneInput = registerForm?.elements?.phone;
+  const loginPasswordInput = loginForm?.elements?.password;
+  const registerPasswordInput = registerForm?.elements?.password;
+  const loginPasswordPeekBtn = document.getElementById("login-password-peek-btn");
+  const registerPasswordPeekBtn = document.getElementById("register-password-peek-btn");
+  const goRegisterBtn = document.getElementById("go-register-btn");
   const backToLoginBtn = document.getElementById("back-to-login-btn");
-  const registerExtraFields = document.getElementById("register-extra-fields");
-  const statusEl = document.getElementById("auth-status");
+  const loginStatusEl = document.getElementById("login-status");
+  const registerStatusEl = document.getElementById("register-status");
   const LOGOUT_FLAG_KEY = "app.loggedOut";
   const POST_LOGIN_REDIRECT_KEY = "app.postLoginRedirect";
-  const consentEl = document.getElementById("policy-consent");
-  let authMode = "login";
+  const registerConsentEl = document.getElementById("policy-consent");
   const ALLOWED_REDIRECTS = new Set([
     "checkout.html",
     "profile.html",
@@ -21,10 +26,10 @@
     "admin.html",
   ]);
 
-  function setStatus(message, isError) {
-    if (!statusEl) return;
-    statusEl.textContent = message || "";
-    statusEl.style.color = isError ? "#dc2626" : "#16a34a";
+  function setStatus(target, message, isError) {
+    if (!target) return;
+    target.textContent = message || "";
+    target.style.color = isError ? "#dc2626" : "#16a34a";
   }
 
   async function request(path, method, payload) {
@@ -43,8 +48,8 @@
     return data;
   }
 
-  function getPayload() {
-    const formData = new FormData(form);
+  function getPayload(formNode) {
+    const formData = new FormData(formNode);
     return {
       phone: normalizePhoneInput(formData.get("phone")),
       password: String(formData.get("password") || ""),
@@ -61,18 +66,18 @@
       .replace(/(?!^)\+/g, "");
   }
 
-  function setupPhoneInput() {
-    if (!phoneInput) return;
-    phoneInput.setAttribute("inputmode", "numeric");
-    phoneInput.setAttribute("autocomplete", "tel");
-    phoneInput.setAttribute("pattern", "^[+]?[0-9]{10,15}$");
-    phoneInput.maxLength = 16;
-    phoneInput.addEventListener("input", () => {
-      phoneInput.value = normalizePhoneInput(phoneInput.value);
+  function setupPhoneInput(input) {
+    if (!input) return;
+    input.setAttribute("inputmode", "numeric");
+    input.setAttribute("autocomplete", "tel");
+    input.setAttribute("pattern", "^[+]?[0-9]{10,15}$");
+    input.maxLength = 16;
+    input.addEventListener("input", () => {
+      input.value = normalizePhoneInput(input.value);
     });
   }
 
-  function setupPasswordPeek() {
+  function setupPasswordPeek(passwordInput, passwordPeekBtn) {
     if (!passwordInput || !passwordPeekBtn) return;
     const showPassword = () => {
       passwordInput.type = "text";
@@ -122,11 +127,18 @@
 
   function validateCredentials(payload) {
     if (!isValidPhone(payload.phone)) {
-      setStatus("Введите номер телефона в формате +79991234567 или 79991234567.", true);
-      return false;
+      return "Введите номер телефона в формате +79991234567 или 79991234567.";
     }
     if (String(payload.password || "").length < 6) {
-      setStatus("Пароль должен содержать минимум 6 символов.", true);
+      return "Пароль должен содержать минимум 6 символов.";
+    }
+    return "";
+  }
+
+  function validateLogin(payload) {
+    const credentialError = validateCredentials(payload);
+    if (credentialError) {
+      setStatus(loginStatusEl, credentialError, true);
       return false;
     }
     return true;
@@ -139,37 +151,47 @@
   }
 
   function validateRegisterProfile(payload) {
+    const credentialError = validateCredentials(payload);
+    if (credentialError) {
+      setStatus(registerStatusEl, credentialError, true);
+      return false;
+    }
     if (!payload.lastName || !payload.firstName || !payload.middleName) {
-      setStatus("Заполните Фамилию, Имя и Отчество.", true);
+      setStatus(registerStatusEl, "Заполните Фамилию, Имя и Отчество.", true);
       return false;
     }
     if (!isValidEmail(payload.email)) {
-      setStatus("Введите корректный email.", true);
+      setStatus(registerStatusEl, "Введите корректный email.", true);
       return false;
     }
     return true;
   }
 
-  function setAuthMode(nextMode) {
-    authMode = nextMode === "register" ? "register" : "login";
-    form?.setAttribute("data-auth-mode", authMode);
-    if (registerExtraFields) registerExtraFields.style.display = authMode === "register" ? "block" : "none";
-    if (backToLoginBtn) backToLoginBtn.style.display = authMode === "register" ? "inline-flex" : "none";
-    if (registerBtn) registerBtn.textContent = authMode === "register" ? "Зарегистрироваться" : "Создать аккаунт";
-    setStatus("", false);
+  function showLoginPanel() {
+    if (loginPanel) loginPanel.style.display = "block";
+    if (registerPanel) registerPanel.style.display = "none";
+    setStatus(loginStatusEl, "", false);
+    setStatus(registerStatusEl, "", false);
+  }
+
+  function showRegisterPanel() {
+    if (loginPanel) loginPanel.style.display = "none";
+    if (registerPanel) registerPanel.style.display = "block";
+    setStatus(loginStatusEl, "", false);
+    setStatus(registerStatusEl, "", false);
   }
 
   function hasConsent() {
-    if (consentEl?.checked) return true;
-    setStatus("Подтвердите согласие на обработку персональных данных.", true);
+    if (registerConsentEl?.checked) return true;
+    setStatus(registerStatusEl, "Подтвердите согласие на обработку персональных данных.", true);
     return false;
   }
 
-  form?.addEventListener("submit", async (event) => {
+  loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const payload = getPayload();
-    if (!validateCredentials(payload)) return;
-    setStatus("Выполняется вход...", false);
+    const payload = getPayload(loginForm);
+    if (!validateLogin(payload)) return;
+    setStatus(loginStatusEl, "Выполняется вход...", false);
     try {
       const data = await request("/auth/login", "POST", payload);
       try {
@@ -177,26 +199,21 @@
       } catch (_error) {
         // noop
       }
-      setStatus("Успешный вход. Переходим...", false);
+      setStatus(loginStatusEl, "Успешный вход. Переходим...", false);
       setTimeout(() => {
         window.location.href = consumePostAuthTarget(data?.user?.role);
       }, 300);
     } catch (error) {
-      setStatus(error.message, true);
+      setStatus(loginStatusEl, error.message, true);
     }
   });
 
-  registerBtn?.addEventListener("click", async () => {
-    if (authMode !== "register") {
-      setAuthMode("register");
-      setStatus("Заполните поля регистрации и нажмите «Зарегистрироваться».", false);
-      return;
-    }
+  registerForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
     if (!hasConsent()) return;
-    const payload = getPayload();
-    if (!validateCredentials(payload)) return;
+    const payload = getPayload(registerForm);
     if (!validateRegisterProfile(payload)) return;
-    setStatus("Создаём аккаунт...", false);
+    setStatus(registerStatusEl, "Создаём аккаунт...", false);
     try {
       const data = await request("/auth/register", "POST", payload);
       try {
@@ -204,17 +221,21 @@
       } catch (_error) {
         // noop
       }
-      setStatus("Аккаунт создан. Переходим дальше...", false);
+      setStatus(registerStatusEl, "Аккаунт создан. Переходим дальше...", false);
       setTimeout(() => {
         window.location.href = consumePostAuthTarget(data?.user?.role);
       }, 300);
     } catch (error) {
-      setStatus(error.message, true);
+      setStatus(registerStatusEl, error.message, true);
     }
   });
 
+  goRegisterBtn?.addEventListener("click", () => {
+    showRegisterPanel();
+  });
+
   backToLoginBtn?.addEventListener("click", () => {
-    setAuthMode("login");
+    showLoginPanel();
   });
 
   request("/auth/me", "GET")
@@ -223,7 +244,9 @@
     })
     .catch(() => {});
 
-  setupPhoneInput();
-  setupPasswordPeek();
-  setAuthMode("login");
+  setupPhoneInput(loginPhoneInput);
+  setupPhoneInput(registerPhoneInput);
+  setupPasswordPeek(loginPasswordInput, loginPasswordPeekBtn);
+  setupPasswordPeek(registerPasswordInput, registerPasswordPeekBtn);
+  showLoginPanel();
 })();

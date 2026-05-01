@@ -22,6 +22,7 @@
   let priceRequestId = 0;
   let priceLoading = false;
   let priceLoadingStartedAt = 0;
+  let priceDebounceTimer = 0;
   const SELECT_PLACEHOLDERS = {
     tech: "Технологии",
     material: "Материалы",
@@ -143,6 +144,13 @@
     select.disabled = true;
   }
 
+  function resetSelectWithPlaceholder(select, key, disabled) {
+    if (!select) return;
+    select.innerHTML = `<option value="">${SELECT_PLACEHOLDERS[key] || ""}</option>`;
+    select.value = "";
+    select.disabled = Boolean(disabled);
+  }
+
   function setPriceValue(value) {
     if (!sumEl) return;
     sumEl.classList.remove("is-loading");
@@ -180,6 +188,9 @@
       Boolean(payload.thickness) &&
       Number(payload.qty || 0) >= 1;
     if (!hasCoreSelections) return false;
+    if (service.type === "modeling") {
+      return Boolean(String(payload.modelingTask || "").trim());
+    }
     if (service.type !== "print") return true;
     return Boolean(localModelFile || uploadedFile?.path);
   }
@@ -226,9 +237,9 @@
     });
     techSelect.value = activeTechs.some((row) => row.code === prevTech) ? prevTech : "";
     if (!techSelect.value) {
-      setDisabledPlaceholder(materialSelect, "Сначала выберите технологию");
-      setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
-      setDisabledPlaceholder(thicknessSelect, "Сначала выберите материал");
+      resetSelectWithPlaceholder(materialSelect, "material", true);
+      resetSelectWithPlaceholder(colorSelect, "color", true);
+      resetSelectWithPlaceholder(thicknessSelect, "thickness", true);
       return;
     }
 
@@ -245,8 +256,8 @@
     materialSelect.disabled = materials.length === 0;
     materialSelect.value = materials.some((row) => row.code === prevMaterial) ? prevMaterial : "";
     if (!materialSelect.value) {
-      setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
-      setDisabledPlaceholder(thicknessSelect, "Сначала выберите материал");
+      resetSelectWithPlaceholder(colorSelect, "color", true);
+      resetSelectWithPlaceholder(thicknessSelect, "thickness", true);
       return;
     }
 
@@ -289,9 +300,9 @@
     });
     techSelect.value = allowedTechs.some((tech) => tech.code === prevTech) ? prevTech : "";
     if (!techSelect.value) {
-      setDisabledPlaceholder(materialSelect, "Сначала выберите технологию");
-      setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
-      setDisabledPlaceholder(thicknessSelect, "Сначала выберите материал");
+      resetSelectWithPlaceholder(materialSelect, "material", true);
+      resetSelectWithPlaceholder(colorSelect, "color", true);
+      resetSelectWithPlaceholder(thicknessSelect, "thickness", true);
       selectedPrintVariant = null;
       return;
     }
@@ -314,7 +325,7 @@
     materialSelect.disabled = materials.length === 0;
     materialSelect.value = materials.some((item) => item.code === prevMaterial) ? prevMaterial : "";
     if (!materialSelect.value) {
-      setDisabledPlaceholder(colorSelect, "Сначала выберите материал");
+      resetSelectWithPlaceholder(colorSelect, "color", true);
       const fallbackThicknesses = getThicknessesByTemplate(selectedTechTemplate);
       fillSelect(thicknessSelect, [{ code: "", name: SELECT_PLACEHOLDERS.thickness }, ...fallbackThicknesses], (item) => {
         return `<option value="${item.code}">${item.name}</option>`;
@@ -425,6 +436,21 @@
       setPriceValue(0);
       syncCheckoutLinksHref();
     }
+  }
+
+  function schedulePriceUpdate(delayMs = 0) {
+    if (priceDebounceTimer) {
+      clearTimeout(priceDebounceTimer);
+      priceDebounceTimer = 0;
+    }
+    if (delayMs <= 0) {
+      updatePrice();
+      return;
+    }
+    priceDebounceTimer = window.setTimeout(() => {
+      priceDebounceTimer = 0;
+      updatePrice();
+    }, delayMs);
   }
 
   function meshVolumeCm3(THREE, mesh) {
@@ -912,6 +938,10 @@
     note.style.maxWidth = "520px";
     note.style.marginTop = "12px";
     note.style.background = "#fffdf2";
+    note.addEventListener("input", () => {
+      hasUserInteractedWithCalculator = true;
+      schedulePriceUpdate(350);
+    });
     panel.appendChild(note);
   }
 
@@ -988,46 +1018,46 @@
         hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           syncPrintSelectors();
-          updatePrice();
+          schedulePriceUpdate();
         } else {
           syncNonPrintSelectors();
-          updatePrice();
+          schedulePriceUpdate();
         }
       });
       form?.elements?.material?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           syncPrintSelectors();
-          updatePrice();
+          schedulePriceUpdate();
         } else {
           syncNonPrintSelectors();
-          updatePrice();
+          schedulePriceUpdate();
         }
       });
       form?.elements?.color?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           syncPrintSelectors();
-          updatePrice();
+          schedulePriceUpdate();
         } else {
           syncNonPrintSelectors();
-          updatePrice();
+          schedulePriceUpdate();
         }
       });
       form?.elements?.thickness?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
         if (service.type === "print") {
           pickPrintVariant();
-          updatePrice();
+          schedulePriceUpdate();
         }
       });
       form?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
-        updatePrice();
+        schedulePriceUpdate();
       });
       form?.addEventListener("input", () => {
         hasUserInteractedWithCalculator = true;
-        updatePrice();
+        schedulePriceUpdate(350);
       });
     } catch (_error) {}
   }

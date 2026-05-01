@@ -79,7 +79,12 @@
       listRoot.innerHTML = '<div class="order-notify-empty">0 Уведомлений</div>';
       return;
     }
-    listRoot.innerHTML = notifications
+    const ordered = [...notifications].sort((a, b) => {
+      const aTime = new Date(a?.createdAt || 0).getTime();
+      const bTime = new Date(b?.createdAt || 0).getTime();
+      return aTime - bTime;
+    });
+    listRoot.innerHTML = ordered
       .map((item) => {
         const file = item.filePath
           ? `<a class="order-message-file" href="${escapeHtml(item.filePath)}" target="_blank" rel="noopener noreferrer">${escapeHtml(

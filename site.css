@@ -2836,25 +2836,23 @@ button.model-panel__file-name {
 
 .landing-testimonials__dot {
   display: inline-flex;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(234, 77, 58, .22);
-  border-radius: 999px;
-  background: #fff;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all .18s ease;
+  transition: transform .18s ease, opacity .18s ease;
 }
 
 .landing-testimonials__dot img {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
 }
 
 .landing-testimonials__dot:hover:not(:disabled) {
-  border-color: rgba(234, 77, 58, .5);
-  box-shadow: 0 8px 18px rgba(234, 77, 58, .16);
   transform: translateY(-1px);
 }
 

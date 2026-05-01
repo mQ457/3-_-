@@ -21,13 +21,10 @@
   }
 
   function syncReplyFormVisibility() {
+    if (supportChatClosedNote) supportChatClosedNote.style.display = "none";
     if (!supportReplyForm) return;
     const canReply = Boolean(activeThreadId) && activeThreadStatus !== "closed";
     supportReplyForm.style.display = canReply ? "block" : "none";
-    if (supportChatClosedNote) {
-      const isClosed = Boolean(activeThreadId) && activeThreadStatus === "closed";
-      supportChatClosedNote.style.display = isClosed ? "block" : "none";
-    }
   }
 
   const sidebarName = document.getElementById("sidebar-name");
@@ -125,6 +122,12 @@
       const activeThread = threads.find((thread) => thread.id === activeThreadId) || threads[0];
       activeThreadStatus = String(activeThread?.status || "");
       syncReplyFormVisibility();
+      if (activeThreadStatus === "closed") {
+        supportChat.style.display = "none";
+        supportMessages.innerHTML = "";
+        return;
+      }
+      supportChat.style.display = "block";
       await loadMessages();
     } catch (_error) {
       supportMessages.innerHTML = "";

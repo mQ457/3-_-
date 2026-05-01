@@ -33,16 +33,12 @@
   }
 
   async function request(path, method, payload) {
-    const options = {
+    const response = await fetch(`${API_BASE}${path}`, {
       method,
       credentials: "include",
-      cache: "no-store",
-    };
-    if (method !== "GET") {
-      options.headers = { "Content-Type": "application/json" };
-      options.body = JSON.stringify(payload || {});
-    }
-    const response = await fetch(`${API_BASE}${path}`, options);
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(data.message || "Ошибка запроса");
@@ -234,13 +230,11 @@
     }
   });
 
-  goRegisterBtn?.addEventListener("click", (event) => {
-    event.preventDefault();
+  goRegisterBtn?.addEventListener("click", () => {
     showRegisterPanel();
   });
 
-  backToLoginBtn?.addEventListener("click", (event) => {
-    event.preventDefault();
+  backToLoginBtn?.addEventListener("click", () => {
     showLoginPanel();
   });
 

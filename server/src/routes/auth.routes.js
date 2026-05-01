@@ -46,25 +46,14 @@ async function clearUserSessions(userId) {
 
 router.post("/register", async (req, res, next) => {
   try {
-    const { phone, password, fullName, email, lastName, firstName, middleName } = req.body || {};
+    const { phone, password, fullName, email } = req.body || {};
     const normalizedPhone = normalizePhone(phone);
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-    const normalizedLastName = String(lastName || "").trim();
-    const normalizedFirstName = String(firstName || "").trim();
-    const normalizedMiddleName = String(middleName || "").trim();
-    const composedFullName = [normalizedLastName, normalizedFirstName, normalizedMiddleName].filter(Boolean).join(" ");
-    const resolvedFullName = composedFullName || String(fullName || "").trim();
+    const normalizedEmail = String(email || "").trim();
 
     if (!normalizedPhone || String(password || "").length < 6) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
         message: "Введите корректный телефон и пароль (минимум 6 символов).",
-      });
-    }
-    if (!normalizedLastName || !normalizedFirstName || !normalizedMiddleName) {
-      return res.status(400).json({
-        error: "VALIDATION_ERROR",
-        message: "Заполните Фамилию, Имя и Отчество.",
       });
     }
     if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
@@ -85,7 +74,7 @@ router.post("/register", async (req, res, next) => {
     await db.query(
       `INSERT INTO users (id, phone, password_hash, full_name, email, role, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, 'user', datetime('now'), datetime('now'))`,
-      [userId, normalizedPhone, passwordHash, resolvedFullName || null, normalizedEmail || null]
+      [userId, normalizedPhone, passwordHash, String(fullName || "").trim() || null, normalizedEmail || null]
     );
 
     await clearUserSessions(userId);
@@ -97,7 +86,7 @@ router.post("/register", async (req, res, next) => {
       user: {
         id: userId,
         phone: normalizedPhone,
-        fullName: resolvedFullName || null,
+        fullName: String(fullName || "").trim() || null,
         email: normalizedEmail || null,
         role: "user",
       },

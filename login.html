@@ -8,70 +8,21 @@
   </head>
   <body>
     <div class="login-wrap">
-      <section class="login-left" aria-label="Форма авторизации">
+      <section class="login-left" aria-label="Форма входа">
         <div class="login-breadcrumb-row">
           <div class="breadcrumb"><span class="arrow"><img class="arrow-icon" src="image/Frame_1_748.png" alt="exit"></span><a href="landing.html">Главная</a></div>
         </div>
+        <h1 style="color: var(--accent);">Добро пожаловать!</h1>
+        <div class="sub">Мы рады видеть тебя</div>
 
-        <div id="login-panel">
-          <h1 style="color: var(--accent);">Добро пожаловать!</h1>
-          <div class="sub">Мы рады видеть тебя</div>
-          <form id="login-form" class="login-form">
-            <label class="field">
-              <span class="label">Номер телефона</span>
-              <input class="input" type="tel" name="phone" inputmode="numeric" autocomplete="tel" maxlength="16" placeholder="+79991234567" required />
-            </label>
-            <label class="field">
-              <span class="label">Пароль</span>
-              <div class="password-peek">
-                <input class="input password-peek__input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
-                <button class="password-peek__btn" id="login-password-peek-btn" type="button" aria-label="Показать пароль">
-                  <img src="image/Frame_1_273.png" alt="Показать пароль" />
-                </button>
-              </div>
-            </label>
-            <button class="btn btn-primary" type="submit" style="padding:10px 16px; border-radius:12px; width:100%;">
-              Войти
-            </button>
-            <button id="go-register-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
-              Создать аккаунт
-            </button>
-            <div id="login-status" class="login-note" aria-live="polite"></div>
-          </form>
-        </div>
-
-        <div id="register-panel" style="display:none;">
-          <h1 style="color: var(--accent);">Создание аккаунта</h1>
-          <div class="sub">Заполни данные для регистрации</div>
-          <form id="register-form" class="login-form">
-            <label class="field">
-              <span class="label">Фамилия</span>
-              <input class="input" type="text" name="lastName" placeholder="Введите фамилию" required />
-            </label>
-            <label class="field">
-              <span class="label">Имя</span>
-              <input class="input" type="text" name="firstName" placeholder="Введите имя" required />
-            </label>
-            <label class="field">
-              <span class="label">Отчество</span>
-              <input class="input" type="text" name="middleName" placeholder="Введите отчество" required />
-            </label>
+        <form id="auth-form" class="login-form">
           <label class="field">
             <span class="label">Номер телефона</span>
             <input class="input" type="tel" name="phone" inputmode="numeric" autocomplete="tel" maxlength="16" placeholder="+79991234567" required />
           </label>
-            <label class="field">
-              <span class="label">Почта</span>
-              <input class="input" type="email" name="email" inputmode="email" autocomplete="email" placeholder="name@email.com" required />
-            </label>
           <label class="field">
             <span class="label">Пароль</span>
-            <div class="password-peek">
-              <input class="input password-peek__input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
-                <button class="password-peek__btn" id="register-password-peek-btn" type="button" aria-label="Показать пароль">
-                <img src="image/Frame_1_273.png" alt="Показать пароль" />
-              </button>
-            </div>
+            <input class="input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
           </label>
           <label class="login-consent">
             <input type="checkbox" id="policy-consent" />
@@ -80,15 +31,16 @@
               <a href="https://pd.rkn.gov.ru/" target="_blank" rel="noopener noreferrer">политикой обработки персональных данных</a>
             </span>
           </label>
-            <button class="btn btn-primary" type="submit" style="padding:10px 16px; border-radius:12px; width:100%;">
-              Зарегистрироваться
-            </button>
-            <button id="back-to-login-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
-              Назад ко входу
-            </button>
-            <div id="register-status" class="login-note" aria-live="polite"></div>
-          </form>
-        </div>
+
+          <button class="btn btn-primary" type="submit" style="padding:10px 16px; border-radius:12px; width:100%;">
+            Войти
+          </button>
+          <button id="register-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
+            Создать аккаунт
+          </button>
+
+          <div id="auth-status" class="login-note" aria-live="polite"></div>
+        </form>
       </section>
 
       <section class="login-right" aria-hidden="true">

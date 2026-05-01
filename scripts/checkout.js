@@ -9,6 +9,7 @@
   const cardsTrack = document.getElementById("checkout-cards-track");
   const cardsPrev = document.getElementById("checkout-cards-prev");
   const cardsNext = document.getElementById("checkout-cards-next");
+  const submitBtn = form?.querySelector("[data-checkout-submit]");
   const statusEl = document.createElement("div");
   statusEl.style.color = "#f87171";
   statusEl.style.marginTop = "12px";
@@ -19,6 +20,13 @@
   function setStatus(message, isError) {
     statusEl.textContent = message || "";
     statusEl.style.color = isError ? "#f87171" : "#34d399";
+  }
+
+  function refreshSubmitState() {
+    if (!submitBtn) return;
+    const usingSavedCard = Boolean(selectedPaymentMethodId);
+    const validManualCard = validateCardForm().ok;
+    submitBtn.disabled = !(usingSavedCard || validManualCard);
   }
 
   function getPayload() {
@@ -90,6 +98,11 @@
       cardInput.maxLength = 19;
       cardInput.addEventListener("input", () => {
         cardInput.value = formatCardNumber(cardInput.value);
+        if (selectedPaymentMethodId) {
+          selectedPaymentMethodId = "";
+          renderSavedCards();
+        }
+        refreshSubmitState();
       });
     }
     if (expInput) {
@@ -98,6 +111,11 @@
       expInput.maxLength = 5;
       expInput.addEventListener("input", () => {
         expInput.value = formatExpValue(expInput.value);
+        if (selectedPaymentMethodId) {
+          selectedPaymentMethodId = "";
+          renderSavedCards();
+        }
+        refreshSubmitState();
       });
     }
     if (cvcInput) {
@@ -106,6 +124,11 @@
       cvcInput.maxLength = 3;
       cvcInput.addEventListener("input", () => {
         cvcInput.value = normalizeDigits(cvcInput.value).slice(0, 3);
+        if (selectedPaymentMethodId) {
+          selectedPaymentMethodId = "";
+          renderSavedCards();
+        }
+        refreshSubmitState();
       });
     }
   }
@@ -130,6 +153,7 @@
       node.addEventListener("click", () => {
         selectedPaymentMethodId = node.getAttribute("data-card-id") || "";
         renderSavedCards();
+        refreshSubmitState();
       });
     });
   }
@@ -139,6 +163,7 @@
     paymentMethods = data.paymentMethods || [];
     selectedPaymentMethodId = paymentMethods.find((item) => item.isDefault)?.id || paymentMethods[0]?.id || "";
     renderSavedCards();
+    refreshSubmitState();
   }
 
   function validateCardForm() {
@@ -240,4 +265,5 @@
     });
 
   setupCardInputs();
+  refreshSubmitState();
 })();

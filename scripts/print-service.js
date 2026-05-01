@@ -29,6 +29,7 @@
     color: "Цвета",
     thickness: "Толщина",
   };
+  const DRAFT_KEY = `print_service_draft_${service.type}`;
 
   const PRINT_TECH_TEMPLATES = [
     { code: "fdm", name: "FDM / FFF", materials: ["pla", "abs", "petg", "tpu", "nylon"], thicknesses: [0.05, 0.1, 0.2, 0.3, 0.5] },
@@ -92,6 +93,42 @@
       modelingTask: String(document.getElementById("modeling-task-text")?.value || ""),
       uploadedFile,
     };
+  }
+
+  function saveDraft() {
+    if (!form) return;
+    const draft = {
+      tech: String(form.elements.tech?.value || ""),
+      material: String(form.elements.material?.value || ""),
+      color: String(form.elements.color?.value || ""),
+      thickness: String(form.elements.thickness?.value || ""),
+      qty: Number(form.elements.qty?.value || 1),
+      modelingTask: String(document.getElementById("modeling-task-text")?.value || ""),
+    };
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (_error) {
+      // noop
+    }
+  }
+
+  function restoreDraft() {
+    if (!form) return;
+    try {
+      const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "{}");
+      if (draft && typeof draft === "object") {
+        if (Number(draft.qty) > 0 && form.elements.qty) {
+          form.elements.qty.value = String(Number(draft.qty));
+        }
+        if (typeof draft.tech === "string" && form.elements.tech) form.elements.tech.value = draft.tech;
+        if (typeof draft.material === "string" && form.elements.material) form.elements.material.value = draft.material;
+        if (typeof draft.color === "string" && form.elements.color) form.elements.color.value = draft.color;
+        if (typeof draft.thickness === "string" && form.elements.thickness) form.elements.thickness.value = draft.thickness;
+      }
+      return draft;
+    } catch (_error) {
+      return null;
+    }
   }
 
   function formatNumberRu(value, digits = 2) {
@@ -938,8 +975,18 @@
     note.style.maxWidth = "520px";
     note.style.marginTop = "12px";
     note.style.background = "#fffdf2";
+    const savedTask = (() => {
+      try {
+        const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "{}");
+        return String(draft?.modelingTask || "");
+      } catch (_error) {
+        return "";
+      }
+    })();
+    if (savedTask) note.value = savedTask;
     note.addEventListener("input", () => {
       hasUserInteractedWithCalculator = true;
+      saveDraft();
       schedulePriceUpdate(350);
     });
     panel.appendChild(note);
@@ -1009,6 +1056,12 @@
   async function init() {
     try {
       await loadOptions();
+      const restoredDraft = restoreDraft();
+      if (restoredDraft) {
+        hasUserInteractedWithCalculator = true;
+        if (service.type === "print") syncPrintSelectors();
+        else syncNonPrintSelectors();
+      }
       updateVolumeUi();
       attachModelingNotepad();
       await attachModelUpload();
@@ -1016,6 +1069,7 @@
       setPriceValue(0);
       form?.elements?.tech?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
+        saveDraft();
         if (service.type === "print") {
           syncPrintSelectors();
           schedulePriceUpdate();
@@ -1026,6 +1080,7 @@
       });
       form?.elements?.material?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
+        saveDraft();
         if (service.type === "print") {
           syncPrintSelectors();
           schedulePriceUpdate();
@@ -1036,6 +1091,7 @@
       });
       form?.elements?.color?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
+        saveDraft();
         if (service.type === "print") {
           syncPrintSelectors();
           schedulePriceUpdate();
@@ -1046,6 +1102,7 @@
       });
       form?.elements?.thickness?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
+        saveDraft();
         if (service.type === "print") {
           pickPrintVariant();
           schedulePriceUpdate();
@@ -1053,10 +1110,12 @@
       });
       form?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
+        saveDraft();
         schedulePriceUpdate();
       });
       form?.addEventListener("input", () => {
         hasUserInteractedWithCalculator = true;
+        saveDraft();
         schedulePriceUpdate(350);
       });
     } catch (_error) {}

@@ -1,7 +1,7 @@
 (function () {
   const API = window.AppBootstrap;
   const tbody = document.querySelector(".orders-table tbody");
-  const TOGGLE_ICON = "image/Frame_1_1179.png";
+  const ORDER_TOGGLE_SRC = "image/Frame_1_1179.png";
   const doneStatuses = new Set(["Завершен", "Готов к выдаче", "Модель готова", "Отправлен"]);
   const progressStatuses = new Set(["В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
 
@@ -115,7 +115,7 @@
         <td>${safeAmount}</td>
         <td>
           <button class="btn btn-ghost js-toggle-order orders-toggle-btn" type="button" data-order-id="${escapeHtml(order.id)}" aria-expanded="false" aria-label="Развернуть детали заказа">
-            <img class="orders-toggle-icon" src="${TOGGLE_ICON}" width="16" height="16" alt="">
+            <img class="orders-toggle-icon" src="${ORDER_TOGGLE_SRC}" width="16" height="16" alt="">
           </button>
         </td>
       </tr>

@@ -8,7 +8,7 @@
   let allOrders = [];
   const doneStatuses = new Set(["Завершен", "Готов к выдаче", "Модель готова", "Отправлен"]);
   const progressStatuses = new Set(["В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
-  const TOGGLE_ICON = "image/Frame_1_1179.png";
+  const ORDER_TOGGLE_SRC = "image/Frame_1_1179.png";
 
   /**
    * Экранирует значение для подстановки в HTML-атрибут.
@@ -87,7 +87,7 @@
         </td>
         <td>${order.totalAmount || 0} ₽</td>
         <td>${formatDate(order.createdAt)}</td>
-        <td><button class="btn-secondary admin-orders-toggle" type="button" data-toggle-order="${order.id}" aria-expanded="false" aria-label="Показать детали заказа"><img class="admin-orders-toggle__icon" src="${TOGGLE_ICON}" width="18" height="18" alt=""></button></td>
+        <td><button class="btn-secondary admin-orders-toggle" type="button" data-toggle-order="${order.id}" aria-expanded="false" aria-label="Показать детали заказа"><img class="admin-orders-toggle__icon" src="${ORDER_TOGGLE_SRC}" width="18" height="18" alt=""></button></td>
       </tr>
       <tr class="admin-orders-row-details" data-order-id="${order.id}" style="display:none;">
         <td colspan="8">

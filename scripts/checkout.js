@@ -33,13 +33,13 @@
     try {
       const stored = JSON.parse(sessionStorage.getItem("checkout_payload") || "{}");
       const params = new URLSearchParams(window.location.search || "");
-      const amountFromQuery = Number(params.get("totalAmount") || 0);
+      const merged = { ...stored };
+      if (params.has("totalAmount")) {
+        const raw = Number(params.get("totalAmount"));
+        merged.totalAmount = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+      }
       const serviceTypeFromQuery = String(params.get("serviceType") || "").trim();
       const serviceNameFromQuery = String(params.get("serviceName") || "").trim();
-      const merged = { ...stored };
-      if (Number.isFinite(amountFromQuery) && amountFromQuery > 0) {
-        merged.totalAmount = amountFromQuery;
-      }
       if (serviceTypeFromQuery) merged.serviceType = serviceTypeFromQuery;
       if (serviceNameFromQuery) merged.serviceName = serviceNameFromQuery;
       return merged;
@@ -47,6 +47,25 @@
       return {};
     }
   }
+
+  /**
+   * Не даём оформлять оплату при нулевой сумме: редирект на шаг услуги (прямой заход на checkout с ?totalAmount=0).
+   */
+  function redirectIfCheckoutTotalInvalid() {
+    try {
+      const merged = getPayload();
+      if (Number(merged.totalAmount || 0) > 0) return;
+      const params = new URLSearchParams(window.location.search || "");
+      const stored = JSON.parse(sessionStorage.getItem("checkout_payload") || "{}");
+      const serviceType = String(params.get("serviceType") || stored.serviceType || "print").toLowerCase();
+      const byType = { print: "print-step-3.html", modeling: "print-step-2.html", scan: "print-step-1.html" };
+      const dest = byType[serviceType] || "print-step-3.html";
+      sessionStorage.setItem("service_calc_notice", "Сначала на странице услуги рассчитайте стоимость больше 0 ₽.");
+      window.location.replace(dest);
+    } catch (_e) {}
+  }
+
+  redirectIfCheckoutTotalInvalid();
 
   function computeDeliveryCost() {
     // Future: Russian Post API integration

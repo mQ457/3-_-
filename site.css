@@ -1517,7 +1517,8 @@ button.model-panel__file-name {
   border-radius: 10px !important;
 }
 
-.orders-toggle-btn img {
+.orders-toggle-btn svg.orders-toggle-icon,
+.orders-toggle-btn img.orders-toggle-icon {
   width: 16px;
   height: 16px;
   display: block;
@@ -1542,7 +1543,8 @@ button.model-panel__file-name {
   padding: 6px 10px;
 }
 
-.admin-orders-toggle .admin-orders-toggle__icon {
+.admin-orders-toggle img.admin-orders-toggle__icon,
+.admin-orders-toggle svg.admin-orders-toggle__icon {
   width: 18px;
   height: 18px;
   display: block;

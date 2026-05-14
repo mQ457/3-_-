@@ -11,6 +11,7 @@
   const sumEl = document.querySelector(".sum");
   const volumeEl = document.getElementById("model-volume-value");
   const checkoutLinks = document.querySelectorAll('a[href^="checkout.html"]');
+  let checkoutLinksWired = false;
   let uploadedFile = null;
   let localModelFile = null;
   let previewObjectUrl = null;
@@ -1033,8 +1034,8 @@
 
   function syncCheckoutLinksHref() {
     const payload = saveCheckoutPayload();
-    const href = buildCheckoutUrl(payload);
     const allowed = canCheckoutToPayment();
+    const href = allowed ? buildCheckoutUrl(payload) : "#";
     checkoutLinks.forEach((link) => {
       link.setAttribute("href", href);
       link.classList.toggle("is-checkout-blocked", !allowed);
@@ -1054,6 +1055,8 @@
 
   function initCheckoutLinks() {
     syncCheckoutLinksHref();
+    if (checkoutLinksWired) return;
+    checkoutLinksWired = true;
     checkoutLinks.forEach((link) => {
       link.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -1070,6 +1073,10 @@
           try {
             if (status) status.textContent = "Сохранение файла для заказа…";
             await tryUploadModelFile(localModelFile, status, "");
+            if (!canCheckoutToPayment()) {
+              if (status) status.textContent = "Сумма заказа должна быть больше 0.";
+              return;
+            }
             const payload = saveCheckoutPayload();
             window.location.href = buildCheckoutUrl(payload);
           } catch (err) {
@@ -1082,6 +1089,7 @@
           }
           return;
         }
+        if (!canCheckoutToPayment()) return;
         const payload = saveCheckoutPayload();
         window.location.href = buildCheckoutUrl(payload);
       });
@@ -1090,6 +1098,29 @@
 
   async function init() {
     try {
+      try {
+        const notice = sessionStorage.getItem("service_calc_notice");
+        if (notice) {
+          sessionStorage.removeItem("service_calc_notice");
+          const statusEl = document.getElementById("model-upload-status");
+          if (statusEl) {
+            statusEl.textContent = notice;
+          } else {
+            const priceLine = document.querySelector(".price-line");
+            if (priceLine) {
+              let banner = document.getElementById("print-service-notice");
+              if (!banner) {
+                banner = document.createElement("p");
+                banner.id = "print-service-notice";
+                banner.className = "muted-small";
+                banner.style.cssText = "color:#dc2626;font-weight:700;margin:8px 0 0;";
+                priceLine.insertAdjacentElement("afterend", banner);
+              }
+              banner.textContent = notice;
+            }
+          }
+        }
+      } catch (_e) {}
       setPriceLoading(true);
       await loadOptions();
       const restoredDraft = restoreDraft();
@@ -1101,9 +1132,9 @@
       updateVolumeUi();
       attachModelingNotepad();
       await attachModelUpload();
-      initCheckoutLinks();
       setPriceLoading(false);
       setPriceValue(0);
+      initCheckoutLinks();
       form?.elements?.tech?.addEventListener("change", () => {
         hasUserInteractedWithCalculator = true;
         saveDraft();
@@ -1158,6 +1189,7 @@
     } catch (_error) {
       setPriceLoading(false);
       setPriceValue(0);
+      initCheckoutLinks();
     }
   }
 

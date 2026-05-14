@@ -20,8 +20,14 @@
     return { name: "Вы", roleClass: "is-user" };
   }
 
+  /**
+   * Показывает/скрывает форму ответа и подсказку о закрытом чате в зависимости от статуса треда.
+   */
   function syncReplyFormVisibility() {
-    if (supportChatClosedNote) supportChatClosedNote.style.display = "none";
+    if (supportChatClosedNote) {
+      const showClosedHint = Boolean(activeThreadId) && activeThreadStatus === "closed";
+      supportChatClosedNote.style.display = showClosedHint ? "block" : "none";
+    }
     if (!supportReplyForm) return;
     const canReply = Boolean(activeThreadId) && activeThreadStatus !== "closed";
     supportReplyForm.style.display = canReply ? "block" : "none";
@@ -126,11 +132,6 @@
       const activeThread = threads.find((thread) => thread.id === activeThreadId) || threads[0];
       activeThreadStatus = String(activeThread?.status || "");
       syncReplyFormVisibility();
-      if (activeThreadStatus === "closed") {
-        supportChat.style.display = "none";
-        supportMessages.innerHTML = "";
-        return;
-      }
       supportChat.style.display = "block";
       await loadMessages();
     } catch (_error) {

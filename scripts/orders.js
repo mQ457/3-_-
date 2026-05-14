@@ -1,8 +1,7 @@
 (function () {
   const API = window.AppBootstrap;
   const tbody = document.querySelector(".orders-table tbody");
-  const TOGGLE_ICON_OPEN = "image/Frame_1_829.png";
-  const TOGGLE_ICON_CLOSE = "image/Frame_1_849.png";
+  const TOGGLE_ICON = "image/Frame_1_1179.png";
   const doneStatuses = new Set(["Завершен", "Готов к выдаче", "Модель готова", "Отправлен"]);
   const progressStatuses = new Set(["В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
 
@@ -115,8 +114,8 @@
         <td>${safeOrderDate}</td>
         <td>${safeAmount}</td>
         <td>
-          <button class="btn btn-ghost js-toggle-order orders-toggle-btn" type="button" data-order-id="${escapeHtml(order.id)}" aria-label="Развернуть">
-            <img src="${TOGGLE_ICON_OPEN}" alt="Открыть детали заказа">
+          <button class="btn btn-ghost js-toggle-order orders-toggle-btn" type="button" data-order-id="${escapeHtml(order.id)}" aria-expanded="false" aria-label="Развернуть детали заказа">
+            <img class="orders-toggle-icon" src="${TOGGLE_ICON}" width="16" height="16" alt="">
           </button>
         </td>
       </tr>
@@ -181,11 +180,10 @@
           if (!row) return;
           const opened = row.style.display !== "none";
           row.style.display = opened ? "none" : "table-row";
-          const icon = button.querySelector("img");
-          if (icon) {
-            icon.src = opened ? TOGGLE_ICON_OPEN : TOGGLE_ICON_CLOSE;
-            icon.alt = opened ? "Открыть детали заказа" : "Скрыть детали заказа";
-          }
+          const nowOpen = row.style.display !== "none";
+          button.classList.toggle("is-expanded", nowOpen);
+          button.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+          button.setAttribute("aria-label", nowOpen ? "Свернуть детали заказа" : "Развернуть детали заказа");
         });
       });
     } catch (error) {

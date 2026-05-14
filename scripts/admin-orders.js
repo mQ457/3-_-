@@ -8,6 +8,31 @@
   let allOrders = [];
   const doneStatuses = new Set(["Завершен", "Готов к выдаче", "Модель готова", "Отправлен"]);
   const progressStatuses = new Set(["В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
+  const TOGGLE_ICON = "image/Frame_1_1179.png";
+
+  /**
+   * Экранирует значение для подстановки в HTML-атрибут.
+   * @param {string} value
+   * @returns {string}
+   */
+  function escapeAttr(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  /**
+   * Имя файла для атрибута download у ссылки на модель заказа.
+   * @param {{ fileName?: string, filePath?: string }} order
+   * @returns {string}
+   */
+  function downloadFileName(order) {
+    const raw = String(order.fileName || "").trim();
+    if (raw) return raw.split(/[/\\]/).pop() || "model.stl";
+    const fromPath = String(order.filePath || "").split("/").pop() || "";
+    return fromPath || "model.stl";
+  }
 
   function formatDate(dateStr) {
     if (!dateStr) return "—";
@@ -25,6 +50,7 @@
     const safeAddress = (order.address || "").replace(/</g, "&lt;");
     const safeTask = (order.modelingTask || "").replace(/</g, "&lt;");
     const safeFilePath = (order.filePath || "").replace(/"/g, "&quot;");
+    const dlName = escapeAttr(downloadFileName(order));
     const safeName = (order.user?.fullName || "—").replace(/</g, "&lt;");
     const safePhone = (order.user?.phone || "—").replace(/</g, "&lt;");
     const safeEmail = (order.user?.email || "—").replace(/</g, "&lt;");
@@ -61,7 +87,7 @@
         </td>
         <td>${order.totalAmount || 0} ₽</td>
         <td>${formatDate(order.createdAt)}</td>
-        <td><button class="btn-secondary" data-toggle-order="${order.id}">⌄</button></td>
+        <td><button class="btn-secondary admin-orders-toggle" type="button" data-toggle-order="${order.id}" aria-expanded="false" aria-label="Показать детали заказа"><img class="admin-orders-toggle__icon" src="${TOGGLE_ICON}" width="18" height="18" alt=""></button></td>
       </tr>
       <tr class="admin-orders-row-details" data-order-id="${order.id}" style="display:none;">
         <td colspan="8">
@@ -102,7 +128,7 @@
               <button class="btn-secondary" data-open-order-notify="${order.orderNumber || order.id}">Уведомить клиента</button>
               ${
                 safeFilePath
-                  ? `<a class="admin-order-details__link" href="${safeFilePath}" target="_blank" rel="noopener noreferrer">Скачать файл</a>`
+                  ? `<a class="admin-order-details__link" href="${safeFilePath}" download="${dlName}" rel="noopener noreferrer">Скачать файл</a>`
                   : ""
               }
             </section>
@@ -157,7 +183,10 @@
         if (!row) return;
         const opened = row.style.display !== "none";
         row.style.display = opened ? "none" : "table-row";
-        btn.textContent = opened ? "⌄" : "⌃";
+        const nowOpen = row.style.display !== "none";
+        btn.classList.toggle("is-expanded", nowOpen);
+        btn.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+        btn.setAttribute("aria-label", nowOpen ? "Скрыть детали заказа" : "Показать детали заказа");
       });
     });
 
@@ -175,6 +204,32 @@
         const orderRef = btn.getAttribute("data-open-order-notify");
         if (!orderRef) return;
         window.location.href = `admin-notifications.html?query=${encodeURIComponent(orderRef)}`;
+      });
+    });
+
+    tbody.querySelectorAll("a.admin-order-details__link[download]").forEach((anchor) => {
+      anchor.addEventListener("click", async (event) => {
+        const href = anchor.getAttribute("href");
+        const suggestedName = anchor.getAttribute("download") || "model.stl";
+        if (!href || href.startsWith("http")) return;
+        event.preventDefault();
+        try {
+          const absoluteUrl = new URL(href, window.location.origin).href;
+          const response = await fetch(absoluteUrl, { credentials: "same-origin" });
+          if (!response.ok) throw new Error("fetch_failed");
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          const temp = document.createElement("a");
+          temp.href = objectUrl;
+          temp.download = suggestedName;
+          temp.rel = "noopener noreferrer";
+          document.body.appendChild(temp);
+          temp.click();
+          temp.remove();
+          URL.revokeObjectURL(objectUrl);
+        } catch (_err) {
+          window.location.href = href;
+        }
       });
     });
   }

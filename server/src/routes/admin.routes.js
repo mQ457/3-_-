@@ -425,7 +425,7 @@ router.get("/notifications/recipients", async (req, res, next) => {
   try {
     const query = String(req.query.query || "").trim();
     const limit = Math.min(100, Math.max(1, Number(req.query.limit || 30)));
-    const normalized = query.toLowerCase();
+    const normalized = query.toLowerCase().replace(/^#+/, "").trim();
     const digits = query.replace(/\D/g, "");
     const [result, unreadResult] = await Promise.all([
       db.query(
@@ -465,11 +465,16 @@ router.get("/notifications/recipients", async (req, res, next) => {
           phone: row.phone || "",
           email: row.email || "",
           orderNumber: "",
+          orderNumbers: [],
           orderIds: [],
         });
       }
       const user = byUser.get(userId);
-      if (row.order_number && !user.orderNumber) user.orderNumber = row.order_number;
+      if (row.order_number) {
+        if (!user.orderNumber) user.orderNumber = row.order_number;
+        const on = String(row.order_number);
+        if (on && !user.orderNumbers.includes(on)) user.orderNumbers.push(on);
+      }
       if (row.order_id) user.orderIds.push(String(row.order_id));
     });
     const recipients = Array.from(byUser.values())
@@ -484,12 +489,15 @@ router.get("/notifications/recipients", async (req, res, next) => {
         const userId = String(user.id || "").toLowerCase();
         const orderNumber = String(user.orderNumber || "").toLowerCase();
         const phoneDigits = phone.replace(/\D/g, "");
+        const orderNumbersList = Array.isArray(user.orderNumbers) ? user.orderNumbers : [];
+        const byAnyOrderNumber = orderNumbersList.some((num) => String(num || "").toLowerCase().includes(normalized));
         const byMain =
           fullName.includes(normalized) ||
           phone.includes(normalized) ||
           email.includes(normalized) ||
           userId.includes(normalized) ||
-          orderNumber.includes(normalized);
+          orderNumber.includes(normalized) ||
+          byAnyOrderNumber;
         const byDigits = Boolean(digits) && phoneDigits.includes(digits);
         const byOrderId = user.orderIds.some((id) => id.toLowerCase().includes(normalized));
         return byMain || byDigits || byOrderId;

@@ -10,7 +10,7 @@
   const form = document.querySelector("form.config-row");
   const sumEl = document.querySelector(".sum");
   const volumeEl = document.getElementById("model-volume-value");
-  const checkoutLinks = document.querySelectorAll('a[href="checkout.html"]');
+  const checkoutLinks = document.querySelectorAll('a[href^="checkout.html"]');
   let uploadedFile = null;
   let localModelFile = null;
   let previewObjectUrl = null;
@@ -23,6 +23,7 @@
   let priceLoading = false;
   let priceLoadingStartedAt = 0;
   let priceDebounceTimer = 0;
+  let lastQuotedTotalRub = 0;
   const SELECT_PLACEHOLDERS = {
     tech: "Технологии",
     material: "Материалы",
@@ -199,7 +200,8 @@
   function setPriceValue(value) {
     if (!sumEl) return;
     sumEl.classList.remove("is-loading");
-    sumEl.textContent = `${Number(value || 0)} ₽`;
+    lastQuotedTotalRub = Number(value || 0);
+    sumEl.textContent = `${lastQuotedTotalRub} ₽`;
   }
 
   function setPriceLoading(isLoading) {
@@ -229,9 +231,12 @@
     const hasQty = Number(payload.qty || 0) >= 1;
     if (!hasQty) return false;
     if (service.type !== "print") {
-      // Для сканирования и моделирования цена должна считаться даже при
-      // неполном наборе селекторов (часть полей может быть неактивной).
-      return true;
+      return (
+        Boolean(String(payload.technology || "").trim()) &&
+        Boolean(String(payload.material || "").trim()) &&
+        Boolean(String(payload.color || "").trim()) &&
+        Boolean(String(payload.thickness || "").trim())
+      );
     }
     const hasPrintSelections =
       Boolean(payload.technology) &&
@@ -240,6 +245,17 @@
       Boolean(payload.thickness);
     if (!hasPrintSelections) return false;
     return Boolean(localModelFile || uploadedFile?.path);
+  }
+
+  /**
+   * Разрешён ли переход на checkout: пользователь взаимодействовал с калькулятором,
+   * заполнены обязательные поля и итоговая цена больше нуля.
+   * @returns {boolean}
+   */
+  function canCheckoutToPayment() {
+    if (priceLoading) return false;
+    const payload = buildPayload();
+    return hasUserInteractedWithCalculator && hasRequiredSelections(payload) && lastQuotedTotalRub > 0;
   }
 
   function getGlobalActiveThicknesses() {
@@ -1018,8 +1034,12 @@
   function syncCheckoutLinksHref() {
     const payload = saveCheckoutPayload();
     const href = buildCheckoutUrl(payload);
+    const allowed = canCheckoutToPayment();
     checkoutLinks.forEach((link) => {
       link.setAttribute("href", href);
+      link.classList.toggle("is-checkout-blocked", !allowed);
+      link.setAttribute("aria-disabled", allowed ? "false" : "true");
+      link.title = allowed ? "" : "Выберите все параметры услуги и дождитесь расчёта ненулевой стоимости.";
     });
   }
 
@@ -1037,6 +1057,13 @@
     checkoutLinks.forEach((link) => {
       link.addEventListener("click", async (e) => {
         e.preventDefault();
+        if (!canCheckoutToPayment()) {
+          const status = document.getElementById("model-upload-status");
+          if (status && page === "print-step-3.html") {
+            status.textContent = "Выберите параметры и загрузите модель — сумма должна быть больше 0.";
+          }
+          return;
+        }
         const needUpload = page === "print-step-3.html" && localModelFile && !uploadedFile?.path;
         if (needUpload) {
           const status = document.getElementById("model-upload-status");

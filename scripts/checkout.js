@@ -229,6 +229,11 @@
       setStatus("Не выбран тип услуги. Вернитесь на шаг услуги и нажмите «Перейти к оплате» снова.", true);
       return;
     }
+    const serviceAmount = Number(payload.totalAmount || 0);
+    if (!Number.isFinite(serviceAmount) || serviceAmount <= 0) {
+      setStatus("Сумма заказа должна быть больше 0. Вернитесь на шаг услуги и выберите параметры.", true);
+      return;
+    }
     payload.serviceType = serviceType;
     sessionStorage.setItem(
       CHECKOUT_CONTEXT_KEY,

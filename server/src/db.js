@@ -2,11 +2,34 @@ const path = require("path");
 const fs = require("fs");
 const { randomUUID } = require("crypto");
 const bcrypt = require("bcrypt");
-const { Pool } = require("pg");
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is required. Set Postgres connection string in environment variables.");
+function createPool() {
+  const connectionString = process.env.DATABASE_URL;
+  if (connectionString) {
+    const { Pool } = require("pg");
+    return {
+      pool: new Pool({
+        connectionString,
+        ssl: shouldUseSsl(connectionString) ? { rejectUnauthorized: false } : false,
+      }),
+      mode: "postgres",
+    };
+  }
+
+  // Local dev fallback: run fully in-memory Postgres compatible DB.
+  // This keeps the backend runnable even without installing/configuring Postgres.
+  const { newDb } = require("pg-mem");
+  const mem = newDb({ autoCreateForeignKeyIndices: true });
+  mem.public.registerFunction({
+    name: "now",
+    returns: "timestamptz",
+    implementation: () => new Date(),
+  });
+  const pg = mem.adapters.createPg();
+  return {
+    pool: new pg.Pool(),
+    mode: "pg-mem",
+  };
 }
 
 function shouldUseSsl(url) {
@@ -18,10 +41,7 @@ function shouldUseSsl(url) {
   }
 }
 
-const pool = new Pool({
-  connectionString,
-  ssl: shouldUseSsl(connectionString) ? { rejectUnauthorized: false } : false,
-});
+const { pool } = createPool();
 
 function normalizeSql(sql) {
   let normalized = String(sql || "");
@@ -43,7 +63,7 @@ async function runSchemaInit(client) {
   const schemaSql = fs.readFileSync(schemaPath, "utf8");
   const statements = splitSqlStatements(schemaSql);
   for (const statement of statements) {
-    await client.query(statement);
+    await client.query(normalizeSql(statement));
   }
 }
 

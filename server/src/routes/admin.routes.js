@@ -12,6 +12,8 @@ const {
 const { notificationUpload } = require("../domain/notification-upload");
 const { publish } = require("../realtime");
 const { sendEmailOnce, isValidEmail, getAppSetting, setAppSetting } = require("../domain/email");
+const { getWarehouse, setWarehouse } = require("../domain/russian-post/warehouse");
+const { mapOrderDeliveryFields, tryCreatePochtaShipment, syncClientPickupOnSent } = require("../domain/russian-post/order-shipment");
 
 const router = express.Router();
 
@@ -126,6 +128,36 @@ router.get("/email-settings", async (_req, res, next) => {
   try {
     const directorEmail = await getAppSetting("director_email", "");
     res.json({ ok: true, directorEmail });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/pochta-warehouse", async (_req, res, next) => {
+  try {
+    const warehouse = await getWarehouse();
+    res.json({ ok: true, warehouse });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/pochta-warehouse", async (req, res, next) => {
+  try {
+    const warehouse = await setWarehouse(req.body?.warehouse || req.body || {});
+    res.json({ ok: true, warehouse });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/orders/:id/russian-post/shipment", async (req, res, next) => {
+  try {
+    const result = await tryCreatePochtaShipment(req.params.id);
+    if (!result.ok && !result.skipped) {
+      return res.status(400).json({ error: "POCHTA_SHIPMENT_FAILED", message: result.reason || "Не удалось создать отправление." });
+    }
+    res.json({ ok: true, ...result });
   } catch (error) {
     next(error);
   }
@@ -279,6 +311,7 @@ router.get("/orders", async (_req, res, next) => {
           filePath: row.file_path || "",
           cardMask: row.card_mask || "",
           address: [row.city, row.address_line].filter(Boolean).join(", "),
+          delivery: mapOrderDeliveryFields(row),
           user: {
             id: row.user_id,
             phone: row.phone || "",
@@ -368,6 +401,10 @@ router.patch("/orders/:id", async (req, res, next) => {
        WHERE id = $3`,
       [normalizedStatus, JSON.stringify(details), req.params.id]
     );
+    if (toStatus === "Отправлен" || toStatus === "Готов к выдаче" || toStatus === "Завершен") {
+      await syncClientPickupOnSent(req.params.id);
+    }
+    publish("order:updated", { orderId: req.params.id, userId: order.user_id });
     if (fromStatus !== toStatus && isValidEmail(order.email || "")) {
       await sendEmailOnce({
         eventKey: `order:${order.id}:status:${toStatus}`,

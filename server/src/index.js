@@ -8,6 +8,7 @@ const authRoutes = require("./routes/auth.routes");
 const profileRoutes = require("./routes/profile.routes");
 const adminRoutes = require("./routes/admin.routes");
 const orderRoutes = require("./routes/order.routes");
+const deliveryRoutes = require("./routes/delivery.routes");
 const reviewRoutes = require("./routes/review.routes");
 const { setBroadcaster } = require("./realtime");
 
@@ -82,6 +83,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/delivery", deliveryRoutes);
 app.use("/api/reviews", reviewRoutes);
 
 // Resolve pretty URLs like /profile -> /profile.html when file exists.

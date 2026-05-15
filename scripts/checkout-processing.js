@@ -53,6 +53,12 @@
           ...payload,
           paymentMethodId,
           addressId,
+          subtotalAmount: payload.subtotalAmount ?? payload.totalAmount,
+          deliveryType: payload.deliveryType || "none",
+          deliveryPointId: payload.deliveryPointId || "",
+          deliveryPointAddress: payload.deliveryPointAddress || "",
+          deliveryPointIndex: payload.deliveryPointIndex || "",
+          deliveryPrice: Number(payload.deliveryAmount || 0),
           initialStatus: "Не оплачено",
         }),
       });

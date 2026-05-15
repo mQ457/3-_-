@@ -67,6 +67,30 @@ async function runSchemaInit(client) {
   }
 }
 
+async function runMigrations(client) {
+  const migrationsDir = path.resolve(__dirname, "..", "sql", "migrations");
+  if (!fs.existsSync(migrationsDir)) return;
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+  for (const file of files) {
+    const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+    const statements = splitSqlStatements(sql);
+    for (const statement of statements) {
+      try {
+        await client.query(normalizeSql(statement));
+      } catch (error) {
+        const message = String(error?.message || "");
+        if (message.includes("already exists") || message.includes("duplicate column")) {
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+}
+
 async function seedServiceOptions(client) {
   const defaults = [
     { type: "material", code: "pla", name: "PLA", priceDelta: 0, sortOrder: 1 },
@@ -428,6 +452,7 @@ async function initDb() {
   try {
     await client.query("BEGIN");
     await runSchemaInit(client);
+    await runMigrations(client);
     await seedServiceOptions(client);
     await seedPrintInventory(client);
     await seedServicePricingRules(client);

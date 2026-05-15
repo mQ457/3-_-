@@ -84,6 +84,24 @@
     return "wait";
   }
 
+  function buildDeliveryBlock(order) {
+    const d = order.delivery || {};
+    const address = d.deliveryPointAddress || order.deliveryAddress;
+    const lines = [
+      `<div class="order-kv"><span class="order-kv__key">Тип</span><span class="order-kv__value">${escapeHtml(d.deliveryType === "russian_post" ? "Почта России" : "Без доставки / вручную")}</span></div>`,
+      `<div class="order-kv"><span class="order-kv__key">ПВЗ / адрес</span><span class="order-kv__value">${escapeHtml(notEmpty(address))}</span></div>`,
+      `<div class="order-kv"><span class="order-kv__key">Индекс</span><span class="order-kv__value">${escapeHtml(notEmpty(d.deliveryPointIndex))}</span></div>`,
+      `<div class="order-kv"><span class="order-kv__key">Стоимость доставки</span><span class="order-kv__value">${d.deliveryPrice > 0 ? `${d.deliveryPrice} ₽` : "—"}</span></div>`,
+    ];
+    if (d.showClientPickup && (d.trackingNumber || d.clientPickupQrData)) {
+      lines.push(
+        `<div class="order-kv"><span class="order-kv__key">Трек-номер</span><span class="order-kv__value">${escapeHtml(notEmpty(d.trackingNumber || d.shipmentBarcode))}</span></div>`,
+        `<button type="button" class="btn btn-ghost" data-show-pickup-qr="${escapeHtml(order.id)}">QR для получения</button>`
+      );
+    }
+    return lines.join("");
+  }
+
   function createRow(order) {
     const safeTask = escapeHtml(notEmpty(order.modelingTask));
     const safeFile = escapeHtml(notEmpty(order.fileName));
@@ -132,7 +150,7 @@
               <div class="order-details-title">Заказ и доставка</div>
               <div class="order-kv"><span class="order-kv__key">ID заказа</span><span class="order-kv__value">${safeOrderId}</span></div>
               <div class="order-kv"><span class="order-kv__key">Тип услуги</span><span class="order-kv__value">${safeServiceType}</span></div>
-              <div class="order-kv"><span class="order-kv__key">Адрес доставки</span><span class="order-kv__value">${safeAddress}</span></div>
+              ${buildDeliveryBlock(order)}
               <div class="order-kv"><span class="order-kv__key">Карта оплаты</span><span class="order-kv__value">${safeCardMask}</span></div>
             </section>
             <section class="order-details-block">
@@ -173,6 +191,14 @@
         return;
       }
       tbody.innerHTML = data.orders.map(createRow).join("");
+      tbody.querySelectorAll("[data-show-pickup-qr]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-show-pickup-qr");
+          const order = data.orders.find((row) => row.id === id);
+          const code = order?.delivery?.clientPickupQrData || order?.delivery?.trackingNumber || "";
+          window.PochtaQr?.openPochtaQrModal({ title: "QR для получения", code });
+        });
+      });
       tbody.querySelectorAll(".js-toggle-order").forEach((button) => {
         button.addEventListener("click", () => {
           const id = button.getAttribute("data-order-id");
@@ -198,10 +224,31 @@
     }
   }
 
+  let realtimeSocket = null;
+
+  function connectRealtime() {
+    try {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      realtimeSocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      realtimeSocket.addEventListener("message", (event) => {
+        let payload = null;
+        try {
+          payload = JSON.parse(event.data || "{}");
+        } catch {
+          payload = null;
+        }
+        if (payload?.event === "order:updated") loadOrders();
+      });
+    } catch {
+      // noop
+    }
+  }
+
   API.bootstrapUser()
     .then(() => {
       API.wireLogout();
       loadOrders();
+      connectRealtime();
     })
     .catch((error) => {
       if (error.status === 401) {

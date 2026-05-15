@@ -67,9 +67,18 @@
 
   redirectIfCheckoutTotalInvalid();
 
+  function readDeliverySelection() {
+    try {
+      return JSON.parse(sessionStorage.getItem("delivery_selection") || "{}");
+    } catch {
+      return {};
+    }
+  }
+
   function computeDeliveryCost() {
-    // Future: Russian Post API integration
-    return 0;
+    const selection = readDeliverySelection();
+    if (selection.deliveryType === "none") return 0;
+    return Math.max(0, Number(selection.deliveryPrice || 0));
   }
 
   function normalizeServiceType(payload) {
@@ -215,16 +224,22 @@
 
   function syncSummary() {
     const payload = getPayload();
-    const serviceAmount = Number(payload.totalAmount || 0);
+    const selection = readDeliverySelection();
+    const subtotal = Number(payload.subtotalAmount ?? payload.totalAmount ?? 0);
     const delivery = computeDeliveryCost();
-    const total = serviceAmount + delivery;
+    const total = subtotal + delivery;
     const sumEl = document.querySelector(".sum");
     const serviceEl = document.querySelector("[data-checkout-service-price]");
     const deliveryEl = document.querySelector("[data-checkout-delivery-price]");
-    if (serviceEl) serviceEl.textContent = `${serviceAmount} ₽`;
+    if (serviceEl) serviceEl.textContent = `${subtotal} ₽`;
     if (deliveryEl) deliveryEl.textContent = `${delivery} ₽`;
     if (sumEl) sumEl.textContent = `${total} ₽`;
+    payload.subtotalAmount = subtotal;
     payload.deliveryAmount = delivery;
+    payload.deliveryType = selection.deliveryType || payload.deliveryType || "none";
+    payload.deliveryPointIndex = selection.deliveryPointIndex || payload.deliveryPointIndex || "";
+    payload.deliveryPointAddress = selection.deliveryPointAddress || payload.deliveryPointAddress || "";
+    payload.deliveryPointId = selection.deliveryPointId || payload.deliveryPointId || "";
     payload.totalAmount = total;
     sessionStorage.setItem("checkout_payload", JSON.stringify(payload));
   }
@@ -248,7 +263,8 @@
       setStatus("Не выбран тип услуги. Вернитесь на шаг услуги и нажмите «Перейти к оплате» снова.", true);
       return;
     }
-    const serviceAmount = Number(payload.totalAmount || 0);
+    syncSummary();
+    const serviceAmount = Number(payload.subtotalAmount ?? payload.totalAmount ?? 0);
     if (!Number.isFinite(serviceAmount) || serviceAmount <= 0) {
       setStatus("Сумма заказа должна быть больше 0. Вернитесь на шаг услуги и выберите параметры.", true);
       return;

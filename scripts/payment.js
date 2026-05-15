@@ -119,7 +119,6 @@
         <div class="pay-item">
           <div class="pay-item-row">
             <div class="left">
-              <div class="ico" aria-hidden="true"></div>
               <div class="meta">Заказ #${order.orderNumber || order.id.slice(0, 8)}<span class="sub">${order.serviceName}</span></div>
             </div>
             <div class="right">

@@ -7,6 +7,8 @@
   const statusEl = document.getElementById("address-status");
   const listEl = document.getElementById("saved-addresses");
   const mapContainer = document.getElementById("delivery-map");
+  const skipDeliveryInput = document.getElementById("skip-delivery");
+  const DELIVERY_SELECTION_KEY = "delivery_selection";
 
   const CITY_FALLBACK_COORDS = {
     "москва": [55.751244, 37.618423],
@@ -114,6 +116,33 @@
     return lat * lat + lng * lng;
   }
 
+  function persistDeliverySelection(extra) {
+    const payload = {
+      deliveryType: skipDeliveryInput?.checked ? "none" : "russian_post",
+      deliveryPointIndex: selectedPickupPoint?.postalCode || "",
+      deliveryPointAddress: selectedPickupPoint?.address || "",
+      deliveryPointId: selectedPickupPoint?.postalCode || "",
+      deliveryPrice: Number(extra?.deliveryPrice || 0),
+      city: selectedPickupPoint?.city || String(cityInput?.value || "").trim(),
+    };
+    sessionStorage.setItem(DELIVERY_SELECTION_KEY, JSON.stringify(payload));
+    try {
+      const checkout = JSON.parse(sessionStorage.getItem("checkout_payload") || "{}");
+      checkout.deliveryType = payload.deliveryType;
+      checkout.deliveryPointIndex = payload.deliveryPointIndex;
+      checkout.deliveryPointAddress = payload.deliveryPointAddress;
+      checkout.deliveryPointId = payload.deliveryPointId;
+      checkout.deliveryAmount = payload.deliveryPrice;
+      checkout.subtotalAmount = Number(checkout.subtotalAmount ?? checkout.totalAmount ?? 0);
+      if (payload.deliveryType === "russian_post") {
+        checkout.totalAmount = checkout.subtotalAmount + payload.deliveryPrice;
+      }
+      sessionStorage.setItem("checkout_payload", JSON.stringify(checkout));
+    } catch {
+      // noop
+    }
+  }
+
   function selectPickupPoint(point, silent) {
     if (!map || !window.ymaps || !point?.coords) return;
     selectedPickupPoint = point;
@@ -133,6 +162,10 @@
 
   async function renderPostOfficesForCity(city, cityCoords) {
     if (!map || !window.ymaps) return;
+    if (skipDeliveryInput?.checked) {
+      setStatus("Доставка отключена — выберите «Без доставки» и сохраните.", false);
+      return;
+    }
     if (!postOfficeCollection) {
       postOfficeCollection = new window.ymaps.GeoObjectCollection();
       map.geoObjects.add(postOfficeCollection);
@@ -141,34 +174,30 @@
     selectedPickupPoint = null;
     if (lineInput) lineInput.value = "";
 
-    const result = await geocode(`Почта России ${city}`, { results: 20 });
+    const data = await API.request(`/delivery/russian-post/offices?city=${encodeURIComponent(city)}`);
+    const offices = data.offices || [];
     const points = [];
 
-    result.geoObjects.each((geoObject) => {
-      const coords = geoObject?.geometry?.getCoordinates?.();
-      if (!Array.isArray(coords)) return;
-      const parsed = parseAddressParts(geoObject, city);
-      const address = parsed.line || "Почта России";
+    offices.forEach((office) => {
+      const coords =
+        office.lat != null && office.lng != null ? [office.lat, office.lng] : null;
+      if (!coords) return;
       const point = {
         coords,
-        city: parsed.city || city,
-        address,
+        city: office.city || city,
+        address: office.address || office.label,
+        postalCode: office.postalCode,
       };
-
       const marker = new window.ymaps.Placemark(
         coords,
         {
           balloonContentHeader: "Почта России",
-          balloonContentBody: address,
-          hintContent: address,
+          balloonContentBody: point.address,
+          hintContent: office.postalCode || point.address,
         },
         { preset: "islands#blueIcon" }
       );
-
-      marker.events.add("click", () => {
-        selectPickupPoint(point, false);
-      });
-
+      marker.events.add("click", () => selectPickupPoint(point, false));
       postOfficeCollection.add(marker);
       points.push(point);
     });
@@ -319,12 +348,34 @@
   });
 
   saveBtn?.addEventListener("click", async () => {
-    if (!selectedPickupPoint?.address) {
+    if (skipDeliveryInput?.checked) {
+      persistDeliverySelection({ deliveryPrice: 0 });
+      setStatus("Доставка отключена. Можно перейти к оплате.", false);
+      return;
+    }
+    if (!selectedPickupPoint?.address || !selectedPickupPoint?.postalCode) {
       setStatus("Сначала выберите пункт выдачи Почты России на карте.", true);
       return;
     }
     setStatus("Сохранение...", false);
     try {
+      let deliveryPrice = 0;
+      try {
+        const checkout = JSON.parse(sessionStorage.getItem("checkout_payload") || "{}");
+        const tariff = await API.request("/delivery/russian-post/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            indexTo: selectedPickupPoint.postalCode,
+            modelVolumeCm3: checkout.modelVolumeCm3,
+            material: checkout.material,
+            qty: checkout.qty,
+          }),
+        });
+        deliveryPrice = Number(tariff.deliveryPrice || 0);
+      } catch (error) {
+        console.warn("tariff", error);
+      }
       await API.request("/profile/addresses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -334,19 +385,47 @@
           addressLine: selectedPickupPoint.address,
           lat: selectedPickupPoint.coords?.[0] ?? null,
           lng: selectedPickupPoint.coords?.[1] ?? null,
+          postalCode: selectedPickupPoint.postalCode,
+          officeCode: selectedPickupPoint.postalCode,
+          deliveryType: "russian_post",
           isDefault: true,
         }),
       });
-      setStatus("Адрес сохранен.", false);
+      persistDeliverySelection({ deliveryPrice });
+      setStatus(`Адрес сохранён. Доставка: ${deliveryPrice} ₽`, false);
       await loadAddresses();
     } catch (error) {
       setStatus(error.message, true);
     }
   });
 
+  skipDeliveryInput?.addEventListener("change", () => {
+    if (skipDeliveryInput.checked) {
+      persistDeliverySelection({ deliveryPrice: 0 });
+      setStatus("Доставка не будет добавлена к заказу.", false);
+    }
+  });
+
+  function loadYandexMaps(apiKey) {
+    return new Promise((resolve, reject) => {
+      if (window.ymaps) {
+        resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      const keyPart = apiKey ? `apikey=${encodeURIComponent(apiKey)}&` : "";
+      script.src = `https://api-maps.yandex.ru/2.1/?${keyPart}lang=ru_RU`;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Не удалось загрузить Яндекс.Карты"));
+      document.head.appendChild(script);
+    });
+  }
+
   API.bootstrapUser()
-    .then(() => {
+    .then(async () => {
       API.wireLogout();
+      const config = await API.request("/delivery/config");
+      await loadYandexMaps(config.yandexMapsApiKey || "");
       initMap();
       loadAddresses().catch((error) => setStatus(error.message, true));
     })

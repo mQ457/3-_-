@@ -102,7 +102,10 @@
               <div class="admin-order-details__title">Заказ и доставка</div>
               <div class="admin-order-kv"><span class="admin-order-kv__key">ID заказа</span><span class="admin-order-kv__value">${safeOrderId}</span></div>
               <div class="admin-order-kv"><span class="admin-order-kv__key">Тип услуги</span><span class="admin-order-kv__value">${safeServiceType}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Адрес доставки</span><span class="admin-order-kv__value">${safeAddress || "Не указано"}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">ПВЗ / адрес</span><span class="admin-order-kv__value">${(order.delivery?.deliveryPointAddress || safeAddress) || "Не указано"}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Индекс</span><span class="admin-order-kv__value">${order.delivery?.deliveryPointIndex || "—"}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">Доставка</span><span class="admin-order-kv__value">${order.delivery?.deliveryPrice > 0 ? `${order.delivery.deliveryPrice} ₽` : "—"}</span></div>
+              <div class="admin-order-kv"><span class="admin-order-kv__key">ШПИ</span><span class="admin-order-kv__value">${order.delivery?.shipmentBarcode || order.delivery?.trackingNumber || "—"}</span></div>
               <div class="admin-order-kv"><span class="admin-order-kv__key">Карта оплаты</span><span class="admin-order-kv__value">${safeCardMask}</span></div>
             </section>
             <section class="admin-order-details-block">
@@ -126,6 +129,16 @@
               <div class="admin-order-details__title">Действия</div>
               <button class="btn-secondary" data-order-user="${order.user?.id || ""}">Профиль</button>
               <button class="btn-secondary" data-open-order-notify="${order.orderNumber || order.id}">Уведомить клиента</button>
+              ${
+                order.delivery?.shipmentBarcode || order.delivery?.shipmentQrData
+                  ? `<button type="button" class="btn-secondary" data-admin-pochta-qr="${order.id}">QR отправления</button>`
+                  : ""
+              }
+              ${
+                order.delivery?.deliveryType === "russian_post" && !order.delivery?.shipmentBarcode
+                  ? `<button type="button" class="btn-secondary" data-admin-pochta-create="${order.id}">Создать в Почте</button>`
+                  : ""
+              }
               ${
                 safeFilePath
                   ? `<a class="admin-order-details__link" href="${safeFilePath}" download="${dlName}" rel="noopener noreferrer">Скачать файл</a>`
@@ -196,6 +209,27 @@
         if (!userId) return;
         const data = await API.request(`/admin/user-full/${userId}`);
         alert(`Клиент: ${data.user.full_name || "—"}\nТелефон: ${data.user.phone || "—"}\nАдресов: ${data.addresses.length}\nКарт: ${data.paymentMethods.length}`);
+      });
+    });
+
+    tbody.querySelectorAll("[data-admin-pochta-qr]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-admin-pochta-qr");
+        const order = allOrders.find((row) => row.id === id);
+        const code = order?.delivery?.shipmentQrData || order?.delivery?.shipmentBarcode || "";
+        window.PochtaQr?.openPochtaQrModal({ title: "QR для печати (админ)", code });
+      });
+    });
+
+    tbody.querySelectorAll("[data-admin-pochta-create]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-admin-pochta-create");
+        try {
+          await API.request(`/admin/orders/${id}/russian-post/shipment`, { method: "POST" });
+          await loadOrders();
+        } catch (error) {
+          alert(error.message || "Не удалось создать отправление");
+        }
       });
     });
 

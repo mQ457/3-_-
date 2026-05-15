@@ -52,7 +52,7 @@ router.get("/bootstrap", requireAuth, async (req, res, next) => {
       [req.auth.userId]
     );
     const addressRes = await db.query(
-      `SELECT id, label, recipient_name, phone, address_line, city, lat, lng, is_default
+      `SELECT id, label, recipient_name, phone, address_line, city, lat, lng, postal_code, office_code, delivery_type, is_default
        FROM user_addresses
        WHERE user_id = $1
        ORDER BY is_default DESC, created_at DESC`,
@@ -85,6 +85,9 @@ router.get("/bootstrap", requireAuth, async (req, res, next) => {
         city: row.city || "",
         lat: row.lat,
         lng: row.lng,
+        postalCode: row.postal_code || "",
+        officeCode: row.office_code || "",
+        deliveryType: row.delivery_type || "manual",
         isDefault: Boolean(row.is_default),
       })),
       paymentMethods: paymentRes.rows.map(paymentPublicRow),
@@ -166,7 +169,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
 router.get("/addresses", requireAuth, async (req, res, next) => {
   try {
     const result = await db.query(
-      `SELECT id, label, recipient_name, phone, address_line, city, lat, lng, is_default
+      `SELECT id, label, recipient_name, phone, address_line, city, lat, lng, postal_code, office_code, delivery_type, is_default
        FROM user_addresses
        WHERE user_id = $1
        ORDER BY is_default DESC, created_at DESC`,
@@ -183,6 +186,9 @@ router.get("/addresses", requireAuth, async (req, res, next) => {
         city: row.city || "",
         lat: row.lat,
         lng: row.lng,
+        postalCode: row.postal_code || "",
+        officeCode: row.office_code || "",
+        deliveryType: row.delivery_type || "manual",
         isDefault: Boolean(row.is_default),
       })),
     });
@@ -193,7 +199,8 @@ router.get("/addresses", requireAuth, async (req, res, next) => {
 
 router.post("/addresses", requireAuth, async (req, res, next) => {
   try {
-    const { label, recipientName, phone, addressLine, city, lat, lng, isDefault } = req.body || {};
+    const { label, recipientName, phone, addressLine, city, lat, lng, postalCode, officeCode, deliveryType, isDefault } =
+      req.body || {};
     if (!String(addressLine || "").trim()) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Введите адрес." });
     }
@@ -204,8 +211,8 @@ router.post("/addresses", requireAuth, async (req, res, next) => {
 
     const id = crypto.randomUUID();
     await db.query(
-      `INSERT INTO user_addresses (id, user_id, label, recipient_name, phone, address_line, city, lat, lng, is_default, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, datetime('now'), datetime('now'))`,
+      `INSERT INTO user_addresses (id, user_id, label, recipient_name, phone, address_line, city, lat, lng, postal_code, office_code, delivery_type, is_default, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, datetime('now'), datetime('now'))`,
       [
         id,
         req.auth.userId,
@@ -216,6 +223,9 @@ router.post("/addresses", requireAuth, async (req, res, next) => {
         String(city || "").trim() || null,
         lat ?? null,
         lng ?? null,
+        String(postalCode || "").trim() || null,
+        String(officeCode || "").trim() || null,
+        String(deliveryType || "manual").trim() || "manual",
         isDefault ? 1 : 0,
       ]
     );
@@ -237,7 +247,8 @@ router.patch("/addresses/:id", requireAuth, async (req, res, next) => {
       return res.status(404).json({ error: "NOT_FOUND", message: "Адрес не найден." });
     }
 
-    const { label, recipientName, phone, addressLine, city, lat, lng, isDefault } = req.body || {};
+    const { label, recipientName, phone, addressLine, city, lat, lng, postalCode, officeCode, deliveryType, isDefault } =
+      req.body || {};
     if (isDefault) {
       await db.query("UPDATE user_addresses SET is_default = 0 WHERE user_id = $1", [req.auth.userId]);
     }
@@ -250,9 +261,12 @@ router.patch("/addresses/:id", requireAuth, async (req, res, next) => {
            city = $5,
            lat = $6,
            lng = $7,
-           is_default = $8,
+           postal_code = $8,
+           office_code = $9,
+           delivery_type = $10,
+           is_default = $11,
            updated_at = datetime('now')
-       WHERE id = $9 AND user_id = $10`,
+       WHERE id = $12 AND user_id = $13`,
       [
         String(label || "").trim() || null,
         String(recipientName || "").trim() || null,
@@ -261,6 +275,9 @@ router.patch("/addresses/:id", requireAuth, async (req, res, next) => {
         String(city || "").trim() || null,
         lat ?? null,
         lng ?? null,
+        String(postalCode || "").trim() || null,
+        String(officeCode || "").trim() || null,
+        String(deliveryType || "manual").trim() || "manual",
         isDefault ? 1 : 0,
         addressId,
         req.auth.userId,

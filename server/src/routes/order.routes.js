@@ -6,6 +6,8 @@ const multer = require("multer");
 const db = require("../db");
 const requireAuth = require("../middleware/requireAuth");
 const { normalizeServiceType, getAllowedStatuses } = require("../domain/order-statuses");
+const { mapOrderDeliveryFields, tryCreatePochtaShipment } = require("../domain/russian-post/order-shipment");
+const { estimatePackageWeightG } = require("../domain/russian-post/weight");
 
 const router = express.Router();
 
@@ -347,6 +349,7 @@ router.get("/", requireAuth, async (req, res, next) => {
         details,
         paymentCardMask: order.card_mask || "",
         deliveryAddress: [order.city, order.address_line].filter(Boolean).join(", "),
+        delivery: mapOrderDeliveryFields(order),
         user: {
           id: order.user_id,
           phone: order.phone,
@@ -377,6 +380,12 @@ router.post("/", requireAuth, async (req, res, next) => {
       addressId,
       paymentMethodId,
       totalAmount,
+      subtotalAmount,
+      deliveryType,
+      deliveryPointId,
+      deliveryPointAddress,
+      deliveryPointIndex,
+      deliveryPrice,
       modelVolumeCm3,
       complexity,
       estimatedHours,
@@ -408,6 +417,23 @@ router.post("/", requireAuth, async (req, res, next) => {
         estimatedHours,
       });
     }
+    const normalizedDeliveryType = String(deliveryType || "").trim() || null;
+    const normalizedDeliveryPrice = Math.max(0, Number(deliveryPrice || 0));
+    const normalizedSubtotal =
+      Number.isFinite(Number(subtotalAmount)) && Number(subtotalAmount) > 0
+        ? Math.max(0, Number(subtotalAmount))
+        : Math.max(0, finalAmount - normalizedDeliveryPrice);
+    if (normalizedDeliveryType === "russian_post" && normalizedDeliveryPrice > 0) {
+      finalAmount = normalizedSubtotal + normalizedDeliveryPrice;
+    } else if (Number.isFinite(Number(totalAmount)) && Number(totalAmount) > 0) {
+      finalAmount = Number(totalAmount);
+    }
+    const packageWeightG = estimatePackageWeightG({
+      modelVolumeCm3,
+      materialCode: material,
+      qty,
+    });
+
     if (normalizedServiceType === "print") {
       const inventoryRows = await loadPrintInventoryRows();
       const variant = findInventoryVariant(inventoryRows, { technology, material, color, thickness });
@@ -492,13 +518,15 @@ router.post("/", requireAuth, async (req, res, next) => {
     });
     await db.query(
       `INSERT INTO orders (
-          id, user_id, order_number, service_type, service_name, status, total_amount, currency,
+          id, user_id, order_number, service_type, service_name, status, total_amount, subtotal_amount, currency,
+          delivery_type, delivery_point_id, delivery_point_address, delivery_point_index, delivery_price, package_weight_g,
           details_json, modeling_task, address_id, payment_method_id, file_name, file_path, file_size, file_ext,
           created_at, updated_at
        )
        VALUES (
-         $1, $2, $3, $4, $5, $6, $7, 'RUB',
-         $8, $9, $10, $11, $12, $13, $14, $15,
+         $1, $2, $3, $4, $5, $6, $7, $8, 'RUB',
+         $9, $10, $11, $12, $13, $14,
+         $15, $16, $17, $18, $19, $20, $21, $22,
          datetime('now'), datetime('now')
        )`,
       [
@@ -509,6 +537,13 @@ router.post("/", requireAuth, async (req, res, next) => {
         String(serviceName || "Услуга").trim(),
         orderStatus,
         finalAmount,
+        normalizedSubtotal,
+        normalizedDeliveryType,
+        String(deliveryPointId || "").trim() || null,
+        String(deliveryPointAddress || "").trim() || null,
+        String(deliveryPointIndex || "").trim() || null,
+        normalizedDeliveryPrice,
+        packageWeightG,
         detailsJson,
         String(modelingTask || "").trim() || null,
         savedAddressId,
@@ -519,6 +554,12 @@ router.post("/", requireAuth, async (req, res, next) => {
         uploadedFile?.ext || null,
       ]
     );
+
+    if (normalizedDeliveryType === "russian_post") {
+      tryCreatePochtaShipment(orderId).catch((error) => {
+        console.warn("[pochta] auto shipment failed:", error.message);
+      });
+    }
 
     res.status(201).json({ ok: true, orderId, orderNumber });
   } catch (error) {

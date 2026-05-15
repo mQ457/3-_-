@@ -6,14 +6,14 @@ async function calculateTariff({ indexTo, weightG }) {
   const config = getConfig();
   const warehouse = await getWarehouse();
   const indexFrom = String(warehouse?.postalCode || config.warehouseIndexFallback || "").trim();
-  const indexTo = String(indexTo || "").trim();
+  const destinationIndex = String(indexTo || "").trim();
   const mass = Math.max(1, Number(weightG || config.minWeightG));
-  if (!indexFrom || !indexTo) {
+  if (!indexFrom || !destinationIndex) {
     throw new Error("Не настроен склад отправления или индекс пункта выдачи.");
   }
   const body = {
     "index-from": indexFrom,
-    "index-to": indexTo,
+    "index-to": destinationIndex,
     "mail-category": config.mailCategory,
     "mail-type": config.mailType,
     "dimension-type": config.dimensionType,
@@ -28,7 +28,7 @@ async function calculateTariff({ indexTo, weightG }) {
     currency: "RUB",
     weightG: mass,
     indexFrom,
-    indexTo,
+    indexTo: destinationIndex,
     raw: payload,
   };
 }

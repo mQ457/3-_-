@@ -2,12 +2,43 @@ const crypto = require("crypto");
 const db = require("../../db");
 const { pochtaRequest } = require("./http");
 
+function extractOfficeList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== "object") return [];
+  const keys = ["postoffices", "offices", "post-offices", "pasportelements", "data", "items"];
+  for (const key of keys) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+  return [];
+}
+
+function readCoordinate(raw, latKeys, lngKeys) {
+  for (const key of latKeys) {
+    const value = raw?.[key];
+    if (value != null && value !== "") {
+      const num = Number(value);
+      if (Number.isFinite(num)) return num;
+    }
+  }
+  return null;
+}
+
 function normalizeOffice(raw) {
-  const postalCode = String(raw?.["postal-code"] || raw?.postalCode || raw?.index || raw?.postal_code || "").trim();
-  const address = String(raw?.address || raw?.["address-source"] || raw?.location || "").trim();
-  const city = String(raw?.settlement || raw?.city || raw?.region || "").trim();
-  const lat = Number(raw?.latitude ?? raw?.lat);
-  const lng = Number(raw?.longitude ?? raw?.longitude ?? raw?.lng);
+  const postalCode = String(
+    raw?.["postal-code"] || raw?.postalCode || raw?.index || raw?.postal_code || raw?.postalCode || ""
+  ).trim();
+  const address = String(
+    raw?.address || raw?.["address-source"] || raw?.["address-source"] || raw?.location || raw?.["address-guid"] || ""
+  ).trim();
+  const city = String(raw?.settlement || raw?.city || raw?.region || raw?.area || "").trim();
+  const lat =
+    readCoordinate(raw, ["latitude", "lat", "geo-lat", "geoLat", "y"]) ??
+    readCoordinate(raw?.location, ["latitude", "lat"]) ??
+    readCoordinate(raw?.coordinates, ["latitude", "lat"]);
+  const lng =
+    readCoordinate(raw, ["longitude", "lng", "geo-lon", "geoLon", "x"]) ??
+    readCoordinate(raw?.location, ["longitude", "lng"]) ??
+    readCoordinate(raw?.coordinates, ["longitude", "lng"]);
   const officeType = String(raw?.type || raw?.["type-code"] || "OPS").trim();
   const workTime = String(raw?.["working-hours"] || raw?.workTime || "").trim();
   return {
@@ -88,25 +119,75 @@ async function searchOfficesFromCache(city, limit = 80) {
   });
 }
 
-async function searchOfficesByAddress(city, top = 50) {
-  const queryCity = String(city || "").trim();
-  if (!queryCity) return [];
-  const encoded = encodeURIComponent(queryCity);
+async function searchOfficesByAddress(address, top = 50) {
+  const queryAddress = String(address || "").trim();
+  if (!queryAddress) return [];
+  const encoded = encodeURIComponent(queryAddress);
   const payload = await pochtaRequest(`/postoffice/1.0/by-address?address=${encoded}&top=${top}`);
-  const list = Array.isArray(payload) ? payload : payload?.postoffices || payload?.offices || [];
+  const list = extractOfficeList(payload);
   const offices = list.map(normalizeOffice).filter((item) => item.postalCode);
-  await cacheOffices(offices, queryCity);
+  await cacheOffices(offices, queryAddress);
   return offices;
 }
 
-async function searchOffices(city) {
-  try {
-    const live = await searchOfficesByAddress(city);
-    if (live.length) return live;
-  } catch (error) {
-    console.warn("[pochta] offices live search failed:", error.message);
+async function searchOfficesNearby(lat, lng, top = 50) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
+  const payload = await pochtaRequest(
+    `/postoffice/1.0/nearby?latitude=${latitude}&longitude=${longitude}&top=${top}`
+  );
+  const list = extractOfficeList(payload);
+  const offices = list.map(normalizeOffice).filter((item) => item.postalCode);
+  await cacheOffices(offices, `${latitude},${longitude}`);
+  return offices;
+}
+
+function mergeOffices(...lists) {
+  const map = new Map();
+  lists.flat().forEach((office) => {
+    if (!office?.postalCode) return;
+    const prev = map.get(office.postalCode);
+    if (!prev) {
+      map.set(office.postalCode, office);
+      return;
+    }
+    if ((prev.lat == null || prev.lng == null) && office.lat != null && office.lng != null) {
+      map.set(office.postalCode, { ...prev, lat: office.lat, lng: office.lng });
+    }
+  });
+  return Array.from(map.values());
+}
+
+async function searchOffices(city, options = {}) {
+  const queryCity = String(city || "").trim();
+  const lat = options.lat != null ? Number(options.lat) : null;
+  const lng = options.lng != null ? Number(options.lng) : null;
+  const collected = [];
+
+  const addressQueries = [queryCity, `${queryCity}, Россия`].filter(Boolean);
+  for (const address of addressQueries) {
+    try {
+      const live = await searchOfficesByAddress(address);
+      if (live.length) collected.push(...live);
+    } catch (error) {
+      console.warn("[pochta] offices by-address failed:", address, error.message);
+    }
   }
-  return searchOfficesFromCache(city);
+
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    try {
+      const nearby = await searchOfficesNearby(lat, lng);
+      if (nearby.length) collected.push(...nearby);
+    } catch (error) {
+      console.warn("[pochta] offices nearby failed:", error.message);
+    }
+  }
+
+  const merged = mergeOffices(collected);
+  if (merged.length) return merged;
+
+  return searchOfficesFromCache(queryCity);
 }
 
 module.exports = {

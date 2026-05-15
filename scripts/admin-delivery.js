@@ -43,8 +43,13 @@
     }
   }
 
-  async function renderOffices(city) {
-    const data = await API.request(`/delivery/russian-post/offices?city=${encodeURIComponent(city)}`);
+  async function renderOffices(city, centerCoords) {
+    const query = new URLSearchParams({ city });
+    if (Array.isArray(centerCoords) && centerCoords.length === 2) {
+      query.set("lat", String(centerCoords[0]));
+      query.set("lng", String(centerCoords[1]));
+    }
+    const data = await API.request(`/delivery/russian-post/offices?${query.toString()}`);
     const offices = data.offices || [];
     if (!map || !window.ymaps) return;
     if (!collection) {
@@ -66,6 +71,22 @@
     setStatus(`Найдено ОПС: ${offices.length}`, false);
   }
 
+  async function resolveCityCenter(city) {
+    if (window.ymaps) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          window.ymaps.geocode(`Россия, ${city}`, { results: 1, kind: "locality" }).then(resolve, reject);
+        });
+        const coords = result?.geoObjects?.get(0)?.geometry?.getCoordinates?.();
+        if (Array.isArray(coords) && coords.length === 2) return coords;
+      } catch {
+        // fallback below
+      }
+    }
+    const data = await API.request(`/delivery/geocode-city?city=${encodeURIComponent(city)}`);
+    return [Number(data.lat), Number(data.lng)];
+  }
+
   async function searchCity() {
     const city = String(cityInput?.value || "").trim();
     if (!city) {
@@ -74,7 +95,11 @@
     }
     setStatus("Загрузка ОПС...", false);
     try {
-      await renderOffices(city);
+      const center = await resolveCityCenter(city);
+      if (map && center?.length === 2) {
+        map.setCenter(center, 11, { duration: 200 });
+      }
+      await renderOffices(city, center);
     } catch (error) {
       setStatus(error.message || "Ошибка поиска ОПС", true);
     }

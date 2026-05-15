@@ -10,21 +10,6 @@
   const skipDeliveryInput = document.getElementById("skip-delivery");
   const DELIVERY_SELECTION_KEY = "delivery_selection";
 
-  const CITY_FALLBACK_COORDS = {
-    "москва": [55.751244, 37.618423],
-    "санкт-петербург": [59.938955, 30.315644],
-    "питер": [59.938955, 30.315644],
-    "новосибирск": [55.030199, 82.92043],
-    "екатеринбург": [56.838011, 60.597465],
-    "казань": [55.796127, 49.106405],
-    "нижний новгород": [56.326797, 44.006516],
-    "челябинск": [55.160026, 61.40259],
-    "омск": [54.989347, 73.368221],
-    "самара": [53.195878, 50.100202],
-    "ростов-на-дону": [47.235714, 39.701505],
-    "уфа": [54.738762, 55.972055],
-  };
-
   let map = null;
   let selectedMarker = null;
   let postOfficeCollection = null;
@@ -90,10 +75,6 @@
     const lat = Number(item?.lat);
     const lng = Number(item?.lng);
     return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
-  }
-
-  function getCityFallbackCoords(city) {
-    return CITY_FALLBACK_COORDS[String(city || "").trim().toLowerCase()] || null;
   }
 
   function parseAddressParts(geoObject, fallbackCity) {
@@ -174,14 +155,35 @@
     selectedPickupPoint = null;
     if (lineInput) lineInput.value = "";
 
-    const data = await API.request(`/delivery/russian-post/offices?city=${encodeURIComponent(city)}`);
+    const query = new URLSearchParams({ city });
+    if (Array.isArray(cityCoords) && cityCoords.length === 2) {
+      query.set("lat", String(cityCoords[0]));
+      query.set("lng", String(cityCoords[1]));
+    }
+    const data = await API.request(`/delivery/russian-post/offices?${query.toString()}`);
     const offices = data.offices || [];
     const points = [];
 
-    offices.forEach((office) => {
-      const coords =
-        office.lat != null && office.lng != null ? [office.lat, office.lng] : null;
-      if (!coords) return;
+    async function resolveCoords(office) {
+      const lat = Number(office.lat);
+      const lng = Number(office.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
+      const queryText = [office.address || office.label, office.city || city, "Почта России"]
+        .filter(Boolean)
+        .join(", ");
+      try {
+        const geo = await geocode(queryText, { results: 1 });
+        const object = geo.geoObjects.get(0);
+        const coords = object?.geometry?.getCoordinates?.();
+        return Array.isArray(coords) ? coords : null;
+      } catch {
+        return null;
+      }
+    }
+
+    for (const office of offices.slice(0, 40)) {
+      const coords = await resolveCoords(office);
+      if (!coords) continue;
       const point = {
         coords,
         city: office.city || city,
@@ -200,16 +202,45 @@
       marker.events.add("click", () => selectPickupPoint(point, false));
       postOfficeCollection.add(marker);
       points.push(point);
-    });
+    }
 
     if (points.length === 0) {
-      setStatus("В этом городе не удалось найти пункты выдачи Почты России.", true);
+      if (!offices.length) {
+        setStatus(
+          "Почта России не вернула ОПС. Проверьте POCHTA_OTPRAVKA_TOKEN и POCHTA_OTPRAVKA_USER_AUTH на сервере (Render → Environment).",
+          true
+        );
+      } else {
+        setStatus(
+          "ОПС найдены, но без координат на карте. Попробуйте уточнить город или повторить поиск позже.",
+          true
+        );
+      }
       return;
     }
 
     points.sort((a, b) => distanceScore(a.coords, cityCoords) - distanceScore(b.coords, cityCoords));
     selectPickupPoint(points[0], true);
     setStatus(`Найдено пунктов выдачи: ${points.length}. Ближайший выбран автоматически.`, false);
+  }
+
+  async function resolveCityCoordinates(city) {
+    const query = `Россия, ${city}`;
+    if (window.ymaps) {
+      try {
+        const cityResult = await geocode(query, { results: 1, kind: "locality" });
+        const cityObject = cityResult.geoObjects.get(0);
+        const coords = cityObject?.geometry?.getCoordinates?.();
+        if (Array.isArray(coords) && coords.length === 2) return coords;
+      } catch (error) {
+        console.warn("ymaps city geocode", error);
+      }
+    }
+    const data = await API.request(`/delivery/geocode-city?city=${encodeURIComponent(city)}`);
+    if (Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
+      return [Number(data.lat), Number(data.lng)];
+    }
+    return null;
   }
 
   async function searchByCity() {
@@ -223,20 +254,18 @@
       return;
     }
 
-    setStatus("Ищем пункты выдачи Почты России...", false);
+    setStatus("Определяем город и ищем ОПС Почты России...", false);
     let cityCoords = null;
 
     try {
-      const cityResult = await geocode(city, { results: 1 });
-      const cityObject = cityResult.geoObjects.get(0);
-      cityCoords = cityObject?.geometry?.getCoordinates?.() || null;
+      cityCoords = await resolveCityCoordinates(city);
     } catch (error) {
-      cityCoords = getCityFallbackCoords(city);
-      if (!cityCoords) {
-        setStatus(`Не удалось найти город: ${extractYandexErrorMessage(error)}.`, true);
-        return;
-      }
-      setStatus("Геокодер города недоступен, используем локальные координаты.", true);
+      setStatus(`Не удалось найти город: ${extractYandexErrorMessage(error)}.`, true);
+      return;
+    }
+    if (!cityCoords) {
+      setStatus("Город не найден. Введите название как в почтовом адресе, например: Казань или Владивосток.", true);
+      return;
     }
 
     map.setCenter(cityCoords, 11, { duration: 250 });

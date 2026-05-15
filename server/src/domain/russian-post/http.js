@@ -1,9 +1,15 @@
 const { getConfig } = require("./config");
 
 function buildUserAuthHeader(rawValue) {
-  const value = String(rawValue || "").trim();
+  let value = String(rawValue || "").trim();
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+  value = value.replace(/^basic\s+/i, "").trim();
   if (!value) return "";
-  if (/^basic\s+/i.test(value)) return value;
   if (value.includes(":")) {
     return `Basic ${Buffer.from(value, "utf8").toString("base64")}`;
   }

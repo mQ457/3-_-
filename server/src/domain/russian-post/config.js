@@ -4,12 +4,31 @@ function readBool(name, defaultValue) {
   return raw === "1" || raw === "true" || raw === "yes";
 }
 
+function sanitizeEnv(value) {
+  let normalized = String(value || "").trim();
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+  return normalized;
+}
+
+function sanitizeToken(value) {
+  return sanitizeEnv(value).replace(/^accesstoken\s+/i, "").trim();
+}
+
+function sanitizeUserAuth(value) {
+  return sanitizeEnv(value).replace(/^basic\s+/i, "").trim();
+}
+
 function getConfig() {
   return {
     enabled: readBool("POCHTA_ENABLED", true),
     baseUrl: String(process.env.POCHTA_OTPRAVKA_BASE_URL || "https://otpravka-api.pochta.ru").replace(/\/+$/, ""),
-    token: String(process.env.POCHTA_OTPRAVKA_TOKEN || "").trim(),
-    userAuth: String(process.env.POCHTA_OTPRAVKA_USER_AUTH || "").trim(),
+    token: sanitizeToken(process.env.POCHTA_OTPRAVKA_TOKEN),
+    userAuth: sanitizeUserAuth(process.env.POCHTA_OTPRAVKA_USER_AUTH),
     timeoutMs: Math.max(5000, Number(process.env.POCHTA_OTPRAVKA_TIMEOUT_MS || 30000)),
     warehouseIndexFallback: String(process.env.POCHTA_WAREHOUSE_INDEX || "").trim(),
     mailType: String(process.env.POCHTA_MAIL_TYPE || "POSTAL_PARCEL").trim(),

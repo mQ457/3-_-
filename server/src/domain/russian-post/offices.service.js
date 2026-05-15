@@ -192,5 +192,7 @@ async function searchOffices(city, options = {}) {
 
 module.exports = {
   searchOffices,
+  searchOfficesByAddress,
+  searchOfficesNearby,
   normalizeOffice,
 };

@@ -1,7 +1,7 @@
 const express = require("express");
 const requireAuth = require("../middleware/requireAuth");
 const { getConfig, isConfigured } = require("../domain/russian-post/config");
-const { searchOffices } = require("../domain/russian-post/offices.service");
+const { searchOffices, searchOfficesByAddress } = require("../domain/russian-post/offices.service");
 const { calculateTariff } = require("../domain/russian-post/rates.service");
 const { estimatePackageWeightG } = require("../domain/russian-post/weight");
 const { resolveCityCenterInRussia } = require("../domain/geocode-city");
@@ -14,6 +14,45 @@ router.get("/config", (_req, res) => {
     ok: true,
     pochtaEnabled: isConfigured(),
     yandexMapsApiKey: config.yandexMapsApiKey,
+  });
+});
+
+router.get("/russian-post/status", async (_req, res) => {
+  const config = getConfig();
+  if (!isConfigured()) {
+    return res.json({
+      ok: false,
+      configured: false,
+      message: "Заполните POCHTA_OTPRAVKA_TOKEN и POCHTA_OTPRAVKA_USER_AUTH (без кавычек в значении).",
+    });
+  }
+  let authOk = false;
+  let authMessage = "";
+  let testOffices = 0;
+  try {
+    const offices = await searchOfficesByAddress("Москва, Россия", 5);
+    authOk = true;
+    testOffices = offices.length;
+    authMessage =
+      testOffices > 0
+        ? `API отвечает, найдено ОПС (тест): ${testOffices}.`
+        : "API отвечает, но ОПС для теста не вернулись — проверьте доступ в личном кабинете Отправки.";
+  } catch (error) {
+    const status = Number(error.status || 0);
+    if (status === 401 || status === 403) {
+      authMessage =
+        "Ошибка авторизации (401/403). Уберите кавычки в POCHTA_OTPRAVKA_USER_AUTH, проверьте токен и ключ из otpravka.pochta.ru.";
+    } else {
+      authMessage = error.message || "Ошибка запроса к API Почты России.";
+    }
+  }
+  res.json({
+    ok: authOk,
+    configured: true,
+    authOk,
+    message: authMessage,
+    testOfficesMoscow: testOffices,
+    hasYandexKey: Boolean(config.yandexMapsApiKey),
   });
 });
 

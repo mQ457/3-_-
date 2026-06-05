@@ -101,7 +101,7 @@
 
   function redirectToLoginForCheckout() {
     rememberPostLoginRedirect("checkout.html");
-    window.location.replace("login.html?next=checkout.html");
+    window.location.replace("login.html?mode=register&next=checkout.html");
   }
 
   function normalizeDigits(value) {

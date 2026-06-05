@@ -1,12 +1,15 @@
 (function () {
   const API_BASE = "/api";
-  const form = document.getElementById("auth-form");
-  const phoneInput = form?.elements?.phone;
-  const registerBtn = document.getElementById("register-btn");
-  const statusEl = document.getElementById("auth-status");
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+  const showRegisterBtn = document.getElementById("show-register-btn");
+  const showLoginBtn = document.getElementById("show-login-btn");
+  const loginStatusEl = document.getElementById("login-status");
+  const registerStatusEl = document.getElementById("register-status");
   const LOGOUT_FLAG_KEY = "app.loggedOut";
   const POST_LOGIN_REDIRECT_KEY = "app.postLoginRedirect";
   const consentEl = document.getElementById("policy-consent");
+  let authMode = "login";
   const ALLOWED_REDIRECTS = new Set([
     "checkout.html",
     "profile.html",
@@ -16,7 +19,8 @@
     "admin.html",
   ]);
 
-  function setStatus(message, isError) {
+  function setStatus(message, isError, mode = authMode) {
+    const statusEl = mode === "register" ? registerStatusEl : loginStatusEl;
     if (!statusEl) return;
     statusEl.textContent = message || "";
     statusEl.style.color = isError ? "#dc2626" : "#16a34a";
@@ -38,11 +42,29 @@
     return data;
   }
 
-  function getPayload() {
+  function getCredentialsPayload(form) {
     const formData = new FormData(form);
     return {
       phone: normalizePhoneInput(formData.get("phone")),
       password: String(formData.get("password") || ""),
+    };
+  }
+
+  function normalizeName(value) {
+    return String(value || "").trim().replace(/\s+/g, " ");
+  }
+
+  function getRegistrationPayload() {
+    const formData = new FormData(registerForm);
+    const lastName = normalizeName(formData.get("lastName"));
+    const firstName = normalizeName(formData.get("firstName"));
+    const middleName = normalizeName(formData.get("middleName"));
+    return {
+      ...getCredentialsPayload(registerForm),
+      lastName,
+      firstName,
+      middleName,
+      fullName: [lastName, firstName, middleName].filter(Boolean).join(" "),
     };
   }
 
@@ -53,13 +75,14 @@
   }
 
   function setupPhoneInput() {
-    if (!phoneInput) return;
-    phoneInput.setAttribute("inputmode", "numeric");
-    phoneInput.setAttribute("autocomplete", "tel");
-    phoneInput.setAttribute("pattern", "^[+]?[0-9]{10,15}$");
-    phoneInput.maxLength = 16;
-    phoneInput.addEventListener("input", () => {
-      phoneInput.value = normalizePhoneInput(phoneInput.value);
+    document.querySelectorAll('#login-form input[name="phone"], #register-form input[name="phone"]').forEach((phoneInput) => {
+      phoneInput.setAttribute("inputmode", "numeric");
+      phoneInput.setAttribute("autocomplete", "tel");
+      phoneInput.setAttribute("pattern", "^[+]?[0-9]{10,15}$");
+      phoneInput.maxLength = 16;
+      phoneInput.addEventListener("input", () => {
+        phoneInput.value = normalizePhoneInput(phoneInput.value);
+      });
     });
   }
 
@@ -90,6 +113,30 @@
     return target || "profile.html";
   }
 
+  function setFormDisabled(form, disabled) {
+    if (!form) return;
+    Array.from(form.elements || []).forEach((element) => {
+      element.disabled = disabled;
+    });
+  }
+
+  function setAuthMode(nextMode, options = {}) {
+    authMode = nextMode === "register" ? "register" : "login";
+    document.body.dataset.authMode = authMode;
+    setFormDisabled(loginForm, authMode !== "login");
+    setFormDisabled(registerForm, authMode !== "register");
+    if (registerForm) {
+      ["lastName", "firstName"].forEach((name) => {
+        if (registerForm.elements?.[name]) registerForm.elements[name].required = true;
+      });
+    }
+    if (consentEl) consentEl.required = true;
+    if (!options.keepStatus) {
+      setStatus("", false, "login");
+      setStatus("", false, "register");
+    }
+  }
+
   function validateCredentials(payload) {
     if (!isValidPhone(payload.phone)) {
       setStatus("Введите номер телефона в формате +79991234567 или 79991234567.", true);
@@ -102,17 +149,29 @@
     return true;
   }
 
+  function validateRegistration(payload) {
+    if (!payload.lastName || !payload.firstName) {
+      setStatus("Введите фамилию и имя.", true);
+      return false;
+    }
+    if (payload.fullName.length < 3) {
+      setStatus("Проверьте ФИО: имя слишком короткое.", true);
+      return false;
+    }
+    return validateCredentials(payload) && hasConsent();
+  }
+
   function hasConsent() {
     if (consentEl?.checked) return true;
     setStatus("Подтвердите согласие на обработку персональных данных.", true);
     return false;
   }
 
-  form?.addEventListener("submit", async (event) => {
+  loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const payload = getPayload();
+    const payload = getCredentialsPayload(loginForm);
     if (!validateCredentials(payload)) return;
-    setStatus("Выполняется вход...", false);
+    setStatus("Выполняется вход...", false, "login");
     try {
       const data = await request("/auth/login", "POST", payload);
       try {
@@ -120,7 +179,7 @@
       } catch (_error) {
         // noop
       }
-      setStatus("Успешный вход. Переходим...", false);
+      setStatus("Успешный вход. Переходим...", false, "login");
       setTimeout(() => {
         window.location.href = consumePostAuthTarget(data?.user?.role);
       }, 300);
@@ -129,11 +188,11 @@
     }
   });
 
-  registerBtn?.addEventListener("click", async () => {
-    if (!hasConsent()) return;
-    const payload = getPayload();
-    if (!validateCredentials(payload)) return;
-    setStatus("Создаём аккаунт...", false);
+  registerForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const payload = getRegistrationPayload();
+    if (!validateRegistration(payload)) return;
+    setStatus("Создаём аккаунт...", false, "register");
     try {
       const data = await request("/auth/register", "POST", payload);
       try {
@@ -141,13 +200,21 @@
       } catch (_error) {
         // noop
       }
-      setStatus("Аккаунт создан. Переходим дальше...", false);
+      setStatus("Аккаунт создан. Переходим дальше...", false, "register");
       setTimeout(() => {
         window.location.href = consumePostAuthTarget(data?.user?.role);
       }, 300);
     } catch (error) {
-      setStatus(error.message, true);
+      setStatus(error.message, true, "register");
     }
+  });
+
+  showRegisterBtn?.addEventListener("click", () => {
+    setAuthMode("register");
+  });
+
+  showLoginBtn?.addEventListener("click", () => {
+    setAuthMode("login");
   });
 
   request("/auth/me", "GET")
@@ -157,4 +224,5 @@
     .catch(() => {});
 
   setupPhoneInput();
+  setAuthMode(new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "login", { keepStatus: true });
 })();

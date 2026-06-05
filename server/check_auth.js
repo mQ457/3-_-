@@ -1,5 +1,5 @@
 const http = require('http');
-const data = JSON.stringify({ phone: '+79990000000', password: '123456'});
+const data = JSON.stringify({ phone: '+79990000000', password: '123456', fullName: 'Иванов Иван' });
 const options = {
   hostname: 'localhost',
   port: 3000,

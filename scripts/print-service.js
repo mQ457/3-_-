@@ -1050,7 +1050,7 @@
     } catch (_error) {
       // noop
     }
-    window.location.href = "login.html?next=checkout.html";
+    window.location.href = "login.html?mode=register&next=checkout.html";
   }
 
   function initCheckoutLinks() {

@@ -67,7 +67,7 @@
       window.location.replace("orders.html");
     } catch (error) {
       if (error.status === 401) {
-        window.location.replace("login.html?next=checkout.html");
+        window.location.replace("login.html?mode=register&next=checkout.html");
         return;
       }
       showError(error.message || "Ошибка обработки оплаты.");
@@ -81,7 +81,7 @@
     .then(run)
     .catch((error) => {
       if (error.status === 401) {
-        window.location.replace("login.html?next=checkout.html");
+        window.location.replace("login.html?mode=register&next=checkout.html");
         return;
       }
       showError(error.message || "Ошибка авторизации.");

@@ -49,11 +49,18 @@ router.post("/register", async (req, res, next) => {
     const { phone, password, fullName, email } = req.body || {};
     const normalizedPhone = normalizePhone(phone);
     const normalizedEmail = String(email || "").trim();
+    const normalizedFullName = String(fullName || "").trim().replace(/\s+/g, " ");
 
-    if (!normalizedPhone || String(password || "").length < 6) {
+    if (!/^[+]?\d{10,15}$/.test(normalizedPhone) || String(password || "").length < 6) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
         message: "Введите корректный телефон и пароль (минимум 6 символов).",
+      });
+    }
+    if (!normalizedFullName || normalizedFullName.split(" ").filter(Boolean).length < 2) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Введите фамилию и имя.",
       });
     }
     if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
@@ -74,7 +81,7 @@ router.post("/register", async (req, res, next) => {
     await db.query(
       `INSERT INTO users (id, phone, password_hash, full_name, email, role, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, 'user', datetime('now'), datetime('now'))`,
-      [userId, normalizedPhone, passwordHash, String(fullName || "").trim() || null, normalizedEmail || null]
+      [userId, normalizedPhone, passwordHash, normalizedFullName, normalizedEmail || null]
     );
 
     await clearUserSessions(userId);
@@ -86,7 +93,7 @@ router.post("/register", async (req, res, next) => {
       user: {
         id: userId,
         phone: normalizedPhone,
-        fullName: String(fullName || "").trim() || null,
+        fullName: normalizedFullName,
         email: normalizedEmail || null,
         role: "user",
       },

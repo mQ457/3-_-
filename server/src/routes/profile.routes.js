@@ -11,6 +11,7 @@ const {
 const { notificationUpload } = require("../domain/notification-upload");
 const { processSupportBotReply } = require("../domain/support-bot");
 const { publish } = require("../realtime");
+const { normalizePhone } = require("../auth");
 
 const router = express.Router();
 
@@ -124,23 +125,38 @@ router.get("/me", requireAuth, async (req, res, next) => {
 
 router.patch("/me", requireAuth, async (req, res, next) => {
   try {
-    const { fullName, email } = req.body || {};
+    const { fullName, phone, email } = req.body || {};
+    const normalizedPhone = normalizePhone(phone || req.auth.phone);
     const normalizedEmail = String(email || "").trim();
 
+    if (!/^[+]?\d{10,15}$/.test(normalizedPhone)) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Введите корректный номер телефона.",
+      });
+    }
     if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
         message: "Введите корректный email.",
       });
     }
+    const existingPhone = await db.query("SELECT id FROM users WHERE phone = $1 AND id <> $2 LIMIT 1", [
+      normalizedPhone,
+      req.auth.userId,
+    ]);
+    if (existingPhone.rows[0]) {
+      return res.status(409).json({ error: "ALREADY_EXISTS", message: "Этот номер телефона уже используется." });
+    }
 
     await db.query(
       `UPDATE users
        SET full_name = $1,
-           email = $2,
+           phone = $2,
+           email = $3,
            updated_at = datetime('now')
-       WHERE id = $3`,
-      [String(fullName || "").trim() || null, normalizedEmail || null, req.auth.userId]
+       WHERE id = $4`,
+      [String(fullName || "").trim() || null, normalizedPhone, normalizedEmail || null, req.auth.userId]
     );
 
     const updated = await db.query(

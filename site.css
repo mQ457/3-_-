@@ -1695,18 +1695,30 @@ button.model-panel__file-name {
 
 /* Login */
 .login-wrap {
-  min-height: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #fff;
 }
 
 .login-left {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0;
+  background: #fff;
+}
+
+.login-pane {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 34px 40px;
-  background: #fff;
 }
 
 .login-breadcrumb-row {
@@ -1716,22 +1728,122 @@ button.model-panel__file-name {
   z-index: 20;
 }
 
+.login-breadcrumb-row--register {
+  left: calc(50% + 34px);
+}
+
 .login-right {
-  position: relative;
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 50%;
+  z-index: 3;
   background:
-    linear-gradient(135deg, rgba(234, 77, 58, .15), rgba(234, 77, 58, .02)),
-    radial-gradient(circle at 60% 70%, rgba(234, 77, 58, .25), transparent 60%),
+    radial-gradient(circle at 72% 62%, rgba(234, 77, 58, .36), transparent 38%),
+    radial-gradient(circle at 24% 28%, rgba(255, 138, 102, .18), transparent 34%),
+    linear-gradient(135deg, rgba(234, 77, 58, .18), rgba(234, 77, 58, .02)),
     linear-gradient(180deg, #2b1b2b, #000);
+  background-size: 170% 170%, 155% 155%, 130% 130%, 100% 100%;
   overflow: hidden;
+  isolation: isolate;
+  animation: login-gradient-drift 11s ease-in-out infinite alternate;
+  box-shadow: -24px 0 70px rgba(15, 23, 42, .16);
+  transition:
+    transform .86s cubic-bezier(.22, 1, .36, 1),
+    box-shadow .86s cubic-bezier(.22, 1, .36, 1);
+  will-change: transform;
+}
+
+.login-right::before,
+.login-right::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.login-right::before {
+  width: 460px;
+  height: 460px;
+  right: -150px;
+  top: 18%;
+  z-index: -1;
+  background: radial-gradient(circle, rgba(234, 77, 58, .36), rgba(234, 77, 58, 0) 66%);
+  filter: blur(4px);
+  opacity: .95;
+  animation: login-orb-one 8s ease-in-out infinite alternate;
+}
+
+.login-right::after {
+  width: 320px;
+  height: 320px;
+  left: 6%;
+  bottom: 8%;
+  z-index: -1;
+  background: radial-gradient(circle, rgba(255, 138, 102, .24), rgba(255, 138, 102, 0) 68%);
+  filter: blur(7px);
+  opacity: .86;
+  animation: login-orb-two 10s ease-in-out infinite alternate;
+}
+
+@keyframes login-gradient-drift {
+  0% {
+    background-position: 50% 50%, 20% 30%, 0% 50%, 50% 50%;
+  }
+
+  45% {
+    background-position: 18% 72%, 84% 18%, 80% 44%, 50% 50%;
+  }
+
+  100% {
+    background-position: 72% 34%, 36% 78%, 100% 42%, 50% 50%;
+  }
+}
+
+@keyframes login-orb-one {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(-130px, 90px, 0) scale(1.16);
+  }
+
+  100% {
+    transform: translate3d(-60px, -70px, 0) scale(.92);
+  }
+}
+
+@keyframes login-orb-two {
+  0% {
+    transform: translate3d(0, 0, 0) scale(.92);
+  }
+
+  50% {
+    transform: translate3d(120px, -95px, 0) scale(1.12);
+  }
+
+  100% {
+    transform: translate3d(48px, 60px, 0) scale(1.02);
+  }
 }
 
 .login-right .brand {
   position: absolute;
   bottom: 34px;
   left: 34px;
+  z-index: 1;
   font-weight: 1000;
   color: rgba(255, 255, 255, .70);
   letter-spacing: .4px;
+}
+
+body[data-auth-mode="register"] .login-left {
+  transform: none;
+}
+
+body[data-auth-mode="register"] .login-right {
+  transform: translateX(-100%);
+  box-shadow: 24px 0 70px rgba(15, 23, 42, .16);
 }
 
 .checkout-wrap {
@@ -1958,6 +2070,11 @@ button.model-panel__file-name {
   gap: 12px;
 }
 
+.login-register-fields {
+  display: grid;
+  gap: 12px;
+}
+
 .login-consent {
   display: flex;
   align-items: flex-start;
@@ -2089,7 +2206,34 @@ button.model-panel__file-name {
   }
 
   .login-wrap {
-    grid-template-columns: 1fr;
+    min-height: 100vh;
+    overflow: auto;
+  }
+
+  .login-left {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    min-height: 100vh;
+    display: block;
+    padding: 0;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .login-pane {
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  .login-breadcrumb-row,
+  .login-breadcrumb-row--register {
+    left: 18px;
+  }
+
+  body[data-auth-mode="login"] .login-pane--register,
+  body[data-auth-mode="register"] .login-pane--login {
+    display: none;
   }
 
   .login-right {
@@ -4258,6 +4402,10 @@ button.model-panel__file-name {
   }
 
   .login-left {
+    padding: 0;
+  }
+
+  .login-pane {
     padding: 24px 16px;
   }
 

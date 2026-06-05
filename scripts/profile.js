@@ -35,6 +35,7 @@
 
   const sidebarName = document.getElementById("sidebar-name");
   const emailInput = form?.elements?.email;
+  const phoneInput = form?.elements?.phone;
 
   function setStatus(message, isError) {
     if (!statusEl) return;
@@ -56,14 +57,34 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  function normalizePhoneInput(value) {
+    return String(value || "")
+      .replace(/[^\d+]/g, "")
+      .replace(/(?!^)\+/g, "");
+  }
+
+  function isValidPhone(value) {
+    return /^[+]?\d{10,15}$/.test(String(value || ""));
+  }
+
   function setupProfileValidation() {
-    if (!emailInput) return;
-    emailInput.setAttribute("inputmode", "email");
-    emailInput.setAttribute("autocomplete", "email");
-    emailInput.addEventListener("blur", () => {
-      const value = String(emailInput.value || "").trim();
-      emailInput.value = value;
-    });
+    if (phoneInput) {
+      phoneInput.setAttribute("inputmode", "numeric");
+      phoneInput.setAttribute("autocomplete", "tel");
+      phoneInput.setAttribute("pattern", "^[+]?[0-9]{10,15}$");
+      phoneInput.maxLength = 16;
+      phoneInput.addEventListener("input", () => {
+        phoneInput.value = normalizePhoneInput(phoneInput.value);
+      });
+    }
+    if (emailInput) {
+      emailInput.setAttribute("inputmode", "email");
+      emailInput.setAttribute("autocomplete", "email");
+      emailInput.addEventListener("blur", () => {
+        const value = String(emailInput.value || "").trim();
+        emailInput.value = value;
+      });
+    }
   }
 
   async function loadProfile() {
@@ -83,7 +104,12 @@
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const phone = normalizePhoneInput(form.elements.phone.value || "");
     const email = String(form.elements.email.value || "").trim();
+    if (!isValidPhone(phone)) {
+      setStatus("Введите номер телефона в формате +79991234567 или 79991234567.", true);
+      return;
+    }
     if (!isValidEmail(email)) {
       setStatus("Введите корректный email.", true);
       return;
@@ -92,6 +118,7 @@
     try {
       const payload = {
         fullName: String(form.elements.fullName.value || "").trim(),
+        phone,
         email,
       };
       const data = await API.request("/profile/me", {

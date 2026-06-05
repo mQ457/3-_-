@@ -6,41 +6,85 @@
     <title>3Д печать</title>
     <link rel="stylesheet" href="./site.css" />
   </head>
-  <body>
+  <body data-auth-mode="login">
     <div class="login-wrap">
-      <section class="login-left" aria-label="Форма входа">
-        <div class="login-breadcrumb-row">
-          <div class="breadcrumb"><span class="arrow"><img class="arrow-icon" src="image/Frame_1_748.png" alt="exit"></span><a href="landing.html">Главная</a></div>
+      <section class="login-left" aria-label="Формы входа и регистрации">
+        <div class="login-pane login-pane--login">
+          <div class="login-breadcrumb-row">
+            <div class="breadcrumb"><span class="arrow"><img class="arrow-icon" src="image/Frame_1_748.png" alt="exit"></span><a href="landing.html">Главная</a></div>
+          </div>
+          <h1 style="color: var(--accent);">Добро пожаловать!</h1>
+          <div class="sub">Мы рады видеть тебя</div>
+
+          <form id="login-form" class="login-form">
+            <label class="field">
+              <span class="label">Номер телефона</span>
+              <input class="input" type="tel" name="phone" inputmode="numeric" autocomplete="tel" maxlength="16" placeholder="+79991234567" required />
+            </label>
+            <label class="field">
+              <span class="label">Пароль</span>
+              <input class="input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
+            </label>
+
+            <button class="btn btn-primary" type="submit" style="padding:10px 16px; border-radius:12px; width:100%;">
+              Войти
+            </button>
+            <button id="show-register-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
+              Создать аккаунт
+            </button>
+
+            <div id="login-status" class="login-note" aria-live="polite"></div>
+          </form>
         </div>
-        <h1 style="color: var(--accent);">Добро пожаловать!</h1>
-        <div class="sub">Мы рады видеть тебя</div>
 
-        <form id="auth-form" class="login-form">
-          <label class="field">
-            <span class="label">Номер телефона</span>
-            <input class="input" type="tel" name="phone" inputmode="numeric" autocomplete="tel" maxlength="16" placeholder="+79991234567" required />
-          </label>
-          <label class="field">
-            <span class="label">Пароль</span>
-            <input class="input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
-          </label>
-          <label class="login-consent">
-            <input type="checkbox" id="policy-consent" />
-            <span>
-              Я соглашаюсь с
-              <a href="https://pd.rkn.gov.ru/" target="_blank" rel="noopener noreferrer">политикой обработки персональных данных</a>
-            </span>
-          </label>
+        <div class="login-pane login-pane--register">
+          <div class="login-breadcrumb-row login-breadcrumb-row--register">
+            <div class="breadcrumb"><span class="arrow"><img class="arrow-icon" src="image/Frame_1_748.png" alt="exit"></span><a href="landing.html">Главная</a></div>
+          </div>
+          <h1 style="color: var(--accent);">Создайте аккаунт</h1>
+          <div class="sub">Заполните данные один раз, и мы подставим их в профиль</div>
 
-          <button class="btn btn-primary" type="submit" style="padding:10px 16px; border-radius:12px; width:100%;">
-            Войти
-          </button>
-          <button id="register-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
-            Создать аккаунт
-          </button>
+          <form id="register-form" class="login-form">
+            <div class="login-register-fields">
+              <label class="field">
+                <span class="label">Фамилия</span>
+                <input class="input" type="text" name="lastName" autocomplete="family-name" placeholder="Иванов" />
+              </label>
+              <label class="field">
+                <span class="label">Имя</span>
+                <input class="input" type="text" name="firstName" autocomplete="given-name" placeholder="Иван" />
+              </label>
+              <label class="field">
+                <span class="label">Отчество</span>
+                <input class="input" type="text" name="middleName" autocomplete="additional-name" placeholder="Иванович" />
+              </label>
+            </div>
+            <label class="field">
+              <span class="label">Номер телефона</span>
+              <input class="input" type="tel" name="phone" inputmode="numeric" autocomplete="tel" maxlength="16" placeholder="+79991234567" required />
+            </label>
+            <label class="field">
+              <span class="label">Пароль</span>
+              <input class="input" type="password" name="password" placeholder="Введите пароль" minlength="6" required />
+            </label>
+            <label class="login-consent">
+              <input type="checkbox" id="policy-consent" />
+              <span>
+                Я соглашаюсь с
+                <a href="https://pd.rkn.gov.ru/" target="_blank" rel="noopener noreferrer">политикой обработки персональных данных</a>
+              </span>
+            </label>
 
-          <div id="auth-status" class="login-note" aria-live="polite"></div>
-        </form>
+            <button class="btn btn-primary" type="submit" style="padding:10px 16px; border-radius:12px; width:100%;">
+              Создать аккаунт
+            </button>
+            <button id="show-login-btn" class="btn btn-ghost" type="button" style="margin-top:2px;">
+              У меня уже есть аккаунт
+            </button>
+
+            <div id="register-status" class="login-note" aria-live="polite"></div>
+          </form>
+        </div>
       </section>
 
       <section class="login-right" aria-hidden="true">

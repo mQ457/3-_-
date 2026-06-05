@@ -17,8 +17,9 @@
 
   function statusLabel(status) {
     const key = String(status || "").trim();
-    if (key === "open") return "Оператор отвечает";
-    if (key === "closed" || key === "bot_active") return "ИИ отвечает";
+    if (key === "open") return "Ждет консультанта";
+    if (key === "bot_active") return "ИИ отвечает";
+    if (key === "closed") return "Закрыт";
     return key || "—";
   }
 

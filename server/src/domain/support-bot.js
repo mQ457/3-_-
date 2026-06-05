@@ -21,23 +21,42 @@ const OLLAMA_BASE_URL = normalizeBaseUrl(process.env.OLLAMA_URL, "http://127.0.0
 const OLLAMA_MODEL = cleanEnv(process.env.OLLAMA_MODEL, "qwen2.5:3b");
 const OLLAMA_API_KEY = cleanEnv(process.env.OLLAMA_API_KEY);
 const OLLAMA_TIMEOUT_MS = Math.max(3000, Number(process.env.OLLAMA_TIMEOUT_MS || 45000) || 45000);
+const GIGACHAT_AUTH_KEY = cleanEnv(process.env.GIGACHAT_AUTH_KEY || process.env.GIGACHAT_CREDENTIALS);
+const GIGACHAT_MODEL = cleanEnv(process.env.GIGACHAT_MODEL, "GigaChat");
+const GIGACHAT_SCOPE = cleanEnv(process.env.GIGACHAT_SCOPE, "GIGACHAT_API_PERS");
+const GIGACHAT_OAUTH_URL = normalizeBaseUrl(
+  process.env.GIGACHAT_OAUTH_URL,
+  "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
+);
+const GIGACHAT_BASE_URL = normalizeBaseUrl(process.env.GIGACHAT_BASE_URL, "https://gigachat.devices.sberbank.ru/api/v1");
+const GIGACHAT_TIMEOUT_MS = Math.max(3000, Number(process.env.GIGACHAT_TIMEOUT_MS || 45000) || 45000);
+const GIGACHAT_TLS_INSECURE = String(process.env.GIGACHAT_TLS_INSECURE || "0") === "1";
 const SUPPORT_BOT_ENABLED = String(process.env.SUPPORT_BOT_ENABLED || "1") !== "0";
 const AI_PROVIDER_RAW = cleanEnv(process.env.AI_PROVIDER, "");
 const AI_PROVIDER = (() => {
   const normalized = AI_PROVIDER_RAW.toLowerCase();
-  if (normalized === "groq" || normalized === "ollama") return normalized;
+  if (normalized === "groq" || normalized === "ollama" || normalized === "gigachat") return normalized;
+  if (GIGACHAT_AUTH_KEY) return "gigachat";
   return GROQ_API_KEY ? "groq" : "ollama";
 })();
+let gigachatTokenCache = null;
 
 const HUMAN_PATTERNS = [
   /вызов[иьяю]*\s+(консультант|оператор|человек)/i,
   /позов[иьяю]*\s+(консультант|оператор|человек)/i,
+  /зов[иьяю]*\s+(консультант|оператор|человек)/i,
   /приглас[иьяю]*\s+(агент|оператор|человек|консультант)/i,
   /приголас[иьяю]*\s+(агент|оператор|человек|консультант)/i,
+  /подключ[иьяю]*\s+(оператор|консультант|человек|специалист)/i,
+  /нуж[её]н\s+(оператор|консультант|человек|специалист)/i,
+  /нужна\s+(помощь|связь)\s+(оператор|консультант|человек|специалист)/i,
   /соедин[иьяю]*\s+с\s+(оператор|консультант|человек)/i,
+  /свяж[иьяю]*\s+с\s+(оператор|консультант|человек|поддержк)/i,
   /(живой|реальный)\s+человек/i,
+  /\bчеловек[ау]?\b/i,
   /\bоператор\b/i,
   /\bконсультант\b/i,
+  /\bспециалист\b/i,
   /\bагент\b/i,
 ];
 
@@ -130,6 +149,14 @@ async function updateThreadStatus(threadId, status) {
      WHERE id = $2`,
     [status, threadId]
   );
+}
+
+async function markThreadForBot(threadId) {
+  await updateThreadStatus(threadId, "bot_active");
+}
+
+async function escalateThread(threadId) {
+  await updateThreadStatus(threadId, "open");
 }
 
 async function loadThreadContext(threadId) {
@@ -225,9 +252,100 @@ async function callGroq(prompt) {
   }
 }
 
+function getHttpsAgentForGigaChat() {
+  if (GIGACHAT_TLS_INSECURE) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  }
+  return {};
+}
+
+async function getGigaChatAccessToken() {
+  if (gigachatTokenCache && gigachatTokenCache.expiresAt > Date.now() + 60000) {
+    return gigachatTokenCache.token;
+  }
+  if (typeof fetch !== "function") {
+    throw new Error("Global fetch is unavailable in current Node runtime");
+  }
+  if (!GIGACHAT_AUTH_KEY) {
+    throw new Error("GigaChat authorization key is missing");
+  }
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), GIGACHAT_TIMEOUT_MS);
+  const headers = {
+    "Content-Type": "application/x-www-form-urlencoded",
+    Accept: "application/json",
+    RqUID: crypto.randomUUID(),
+    Authorization: `Basic ${GIGACHAT_AUTH_KEY}`,
+  };
+  try {
+    const response = await fetch(GIGACHAT_OAUTH_URL, {
+      method: "POST",
+      headers,
+      signal: abortController.signal,
+      ...getHttpsAgentForGigaChat(),
+      body: new URLSearchParams({ scope: GIGACHAT_SCOPE }).toString(),
+    });
+    if (!response.ok) {
+      const details = await response.text().catch(() => "");
+      throw new Error(`GigaChat OAuth failed: ${response.status}${details ? ` ${details.slice(0, 160)}` : ""}`);
+    }
+    const payload = await response.json();
+    const token = String(payload?.access_token || "").trim();
+    if (!token) throw new Error("GigaChat OAuth response has no access_token");
+    const expiresAt = Number(payload?.expires_at || 0) || Date.now() + 25 * 60 * 1000;
+    gigachatTokenCache = { token, expiresAt };
+    return token;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function callGigaChat(prompt) {
+  const token = await getGigaChatAccessToken();
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), GIGACHAT_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${GIGACHAT_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: abortController.signal,
+      ...getHttpsAgentForGigaChat(),
+      body: JSON.stringify({
+        model: GIGACHAT_MODEL,
+        temperature: 0.15,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      const details = await response.text().catch(() => "");
+      throw new Error(`GigaChat request failed: ${response.status}${details ? ` ${details.slice(0, 160)}` : ""}`);
+    }
+    const payload = await response.json();
+    const content = payload?.choices?.[0]?.message?.content;
+    return String(content || "").trim();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function callModel(prompt) {
   if (AI_PROVIDER === "groq" && !GROQ_API_KEY) {
     throw new Error("AI provider is groq but GROQ_API_KEY is not set");
+  }
+  if (AI_PROVIDER === "gigachat" && !GIGACHAT_AUTH_KEY) {
+    throw new Error("AI provider is gigachat but GIGACHAT_AUTH_KEY is not set");
+  }
+  if (AI_PROVIDER === "gigachat") {
+    return callGigaChat(prompt);
   }
   if (AI_PROVIDER === "groq") {
     return callGroq(prompt);
@@ -245,13 +363,13 @@ async function processSupportBotReply({ threadId, userMessage }) {
   if (!context.thread) return { handledByBot: false, escalated: false };
 
   if (!SUPPORT_BOT_ENABLED) {
-    await updateThreadStatus(threadId, "open");
+    await escalateThread(threadId);
     await insertBotMessage(threadId, "Сейчас бот отключен. Подключаю консультанта.");
     return { handledByBot: false, escalated: true, reason: "bot_disabled" };
   }
 
   if (wantsHumanByMessage(safeMessage)) {
-    await updateThreadStatus(threadId, "open");
+    await escalateThread(threadId);
     await insertBotMessage(threadId, "Подключаю консультанта. Пожалуйста, ожидайте ответа специалиста.");
     return { handledByBot: false, escalated: true, reason: "human_requested" };
   }
@@ -269,28 +387,28 @@ async function processSupportBotReply({ threadId, userMessage }) {
       const fallbackMessage = normalizeBotText(raw);
       if (fallbackMessage) {
         // Many models sometimes ignore strict JSON format; use plain text as valid bot reply.
-        await updateThreadStatus(threadId, "closed");
+        await markThreadForBot(threadId);
         await insertBotMessage(threadId, fallbackMessage);
         return { handledByBot: true, escalated: false, reason: "fallback_plain_text" };
       }
-      await updateThreadStatus(threadId, "open");
+      await escalateThread(threadId);
       await insertBotMessage(threadId, "Не удалось корректно обработать запрос. Подключаю консультанта.");
       return { handledByBot: false, escalated: true, reason: "invalid_model_response" };
     }
 
     if (parsed.action === "handoff") {
-      await updateThreadStatus(threadId, "open");
+      await escalateThread(threadId);
       await insertBotMessage(threadId, parsed.message);
       return { handledByBot: false, escalated: true, reason: "handoff" };
     }
 
-    await updateThreadStatus(threadId, "closed");
+    await markThreadForBot(threadId);
     await insertBotMessage(threadId, parsed.message);
     return { handledByBot: true, escalated: false, reason: parsed.action };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[support-bot] model request failed:", error?.message || error);
-    await updateThreadStatus(threadId, "open");
+    await escalateThread(threadId);
     await insertBotMessage(
       threadId,
       "Не получилось обработать запрос автоматически. Передаю обращение консультанту."

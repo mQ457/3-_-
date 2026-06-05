@@ -74,6 +74,16 @@
       .replace(/(?!^)\+/g, "");
   }
 
+  function normalizeRussianPhone(value) {
+    const raw = normalizePhoneInput(value);
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length === 11 && digits.startsWith("8")) return `+7${digits.slice(1)}`;
+    if (digits.length === 11 && digits.startsWith("7")) return `+${digits}`;
+    if (digits.length === 10) return `+7${digits}`;
+    if (raw.startsWith("+")) return `+${digits}`;
+    return digits ? `+${digits}` : "";
+  }
+
   function setupPhoneInput() {
     document.querySelectorAll('#login-form input[name="phone"], #register-form input[name="phone"]').forEach((phoneInput) => {
       phoneInput.setAttribute("inputmode", "numeric");
@@ -87,7 +97,7 @@
   }
 
   function isValidPhone(value) {
-    return /^[+]?\d{10,15}$/.test(String(value || ""));
+    return /^\+7\d{10}$/.test(normalizeRussianPhone(value));
   }
 
   function sanitizeRedirect(value) {
@@ -139,9 +149,10 @@
 
   function validateCredentials(payload) {
     if (!isValidPhone(payload.phone)) {
-      setStatus("Введите номер телефона в формате +79991234567 или 79991234567.", true);
+      setStatus("Введите российский номер: +79991234567, 79991234567 или 89991234567.", true);
       return false;
     }
+    payload.phone = normalizeRussianPhone(payload.phone);
     if (String(payload.password || "").length < 6) {
       setStatus("Пароль должен содержать минимум 6 символов.", true);
       return false;

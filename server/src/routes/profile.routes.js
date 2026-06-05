@@ -463,7 +463,7 @@ router.post("/support/threads", requireAuth, async (req, res, next) => {
     } else {
       await db.query(
         `INSERT INTO support_threads (id, user_id, subject, status, user_visible, created_at, updated_at, last_message_at)
-         VALUES ($1, $2, $3, 'closed', 1, datetime('now'), datetime('now'), datetime('now'))`,
+         VALUES ($1, $2, $3, 'bot_active', 1, datetime('now'), datetime('now'), datetime('now'))`,
         [threadId, req.auth.userId, normalizedSubject]
       );
     }

@@ -28,6 +28,9 @@
       const showClosedHint = Boolean(activeThreadId) && activeThreadStatus === "closed";
       supportChatClosedNote.style.display = showClosedHint ? "block" : "none";
     }
+    if (supportChat && activeThreadStatus === "closed") {
+      supportChat.style.display = "none";
+    }
     if (!supportReplyForm) return;
     const canReply = Boolean(activeThreadId) && activeThreadStatus !== "closed";
     supportReplyForm.style.display = canReply ? "block" : "none";
@@ -63,8 +66,18 @@
       .replace(/(?!^)\+/g, "");
   }
 
+  function normalizeRussianPhone(value) {
+    const raw = normalizePhoneInput(value);
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length === 11 && digits.startsWith("8")) return `+7${digits.slice(1)}`;
+    if (digits.length === 11 && digits.startsWith("7")) return `+${digits}`;
+    if (digits.length === 10) return `+7${digits}`;
+    if (raw.startsWith("+")) return `+${digits}`;
+    return digits ? `+${digits}` : "";
+  }
+
   function isValidPhone(value) {
-    return /^[+]?\d{10,15}$/.test(String(value || ""));
+    return /^\+7\d{10}$/.test(normalizeRussianPhone(value));
   }
 
   function setupProfileValidation() {
@@ -104,10 +117,10 @@
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const phone = normalizePhoneInput(form.elements.phone.value || "");
+    const phone = normalizeRussianPhone(form.elements.phone.value || "");
     const email = String(form.elements.email.value || "").trim();
     if (!isValidPhone(phone)) {
-      setStatus("Введите номер телефона в формате +79991234567 или 79991234567.", true);
+      setStatus("Введите российский номер: +79991234567, 79991234567 или 89991234567.", true);
       return;
     }
     if (!isValidEmail(email)) {
@@ -146,7 +159,7 @@
         activeThreadId = "";
         activeThreadStatus = "";
         supportMessages.innerHTML = '<div class="muted-small">Обращений пока нет. Напишите вопрос выше, и чат появится здесь.</div>';
-        supportChat.style.display = "block";
+        supportChat.style.display = "none";
         syncReplyFormVisibility();
         return;
       }
@@ -159,7 +172,7 @@
       const activeThread = threads.find((thread) => thread.id === activeThreadId) || threads[0];
       activeThreadStatus = String(activeThread?.status || "");
       syncReplyFormVisibility();
-      supportChat.style.display = "block";
+      supportChat.style.display = activeThreadStatus === "closed" ? "none" : "block";
       await loadMessages();
     } catch (_error) {
       supportMessages.innerHTML = "";
@@ -226,7 +239,7 @@
     try {
       const data = await API.request(`/profile/support/threads/${activeThreadId}/messages`, { method: "GET" });
       const messages = data.messages || [];
-      supportChat.style.display = "block";
+      supportChat.style.display = activeThreadStatus === "closed" ? "none" : "block";
       supportMessages.innerHTML = messages
         .map((msg) => {
           const sender = senderMeta(msg.senderType);
@@ -257,8 +270,6 @@
       });
       supportStatus.textContent = "Сообщение отправлено.";
       supportForm.reset();
-      activeThreadId = "";
-      activeThreadStatus = "";
       await loadThreads();
     } catch (error) {
       supportStatus.textContent = error.message;

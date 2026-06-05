@@ -24,9 +24,26 @@ You can override them with:
 
 Server starts on `http://localhost:3000` by default.
 
-## 2.1) Local AI support bot (Ollama)
+## 2.1) AI support bot (GigaChat)
 
-Support chat can auto-reply with a local LLM and escalate to human admin only when needed.
+Support chat can auto-reply with GigaChat and escalate to human admin when needed.
+
+Set env:
+- `SUPPORT_BOT_ENABLED=1`
+- `AI_PROVIDER=gigachat`
+- `GIGACHAT_AUTH_KEY=<base64 authorization key>`
+- `GIGACHAT_MODEL=GigaChat`
+- `GIGACHAT_SCOPE=GIGACHAT_API_PERS`
+- optional: `GIGACHAT_TLS_INSECURE=1` only for local certificate troubleshooting
+
+Escalation behavior:
+- If user asks for a human (operator/consultant/specialist), thread is moved to human queue (`status=open`).
+- If AI handles request, thread stays visible to user (`status=bot_active`).
+- Only admin manual close changes thread to `status=closed` and hides it from the user.
+
+## 2.1.1) Local AI support bot (Ollama)
+
+Support chat can also auto-reply with a local LLM and escalate to human admin only when needed.
 
 1. Install Ollama: `https://ollama.com/download`
 2. Pull model (recommended starter): `ollama pull qwen2.5:3b`
@@ -37,11 +54,7 @@ Support chat can auto-reply with a local LLM and escalate to human admin only wh
    - optional: `OLLAMA_API_KEY=...` (if your Ollama endpoint is behind auth)
    - optional: `OLLAMA_TIMEOUT_MS=45000`
 
-Escalation behavior:
-- If user asks for a human (operator/consultant), thread is moved to human queue (`status=open`).
-- If AI handles request, thread stays in bot mode (`status=closed`) and no admin notification is raised.
-
-## 2.1.1) Groq API mode (no self-hosted Ollama)
+## 2.1.2) Groq API mode (no self-hosted Ollama)
 
 Use Groq when you want AI in deploy without running your own model server.
 
@@ -107,10 +120,10 @@ Neon:
 
 ## 4) API
 
-- `POST /api/auth/register` `{ phone, password }`
+- `POST /api/auth/register` `{ phone, password, fullName }`
 - `POST /api/auth/login` `{ phone, password }`
 - `POST /api/auth/logout`
 - `GET /api/profile/me`
-- `PATCH /api/profile/me` `{ fullName, email }`
+- `PATCH /api/profile/me` `{ fullName, phone, email }`
 
 All authenticated requests use `HTTP-only` cookie set by login/register.

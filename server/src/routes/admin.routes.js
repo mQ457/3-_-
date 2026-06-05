@@ -85,14 +85,7 @@ router.get("/nav-updates", async (req, res, next) => {
         `SELECT COUNT(*) AS count
          FROM support_threads t
          WHERE datetime(t.last_message_at) > datetime($1)
-           AND t.status = 'open'
-           AND (
-             SELECT sm.sender_type
-             FROM support_messages sm
-             WHERE sm.thread_id = t.id
-             ORDER BY datetime(sm.created_at) DESC
-             LIMIT 1
-           ) = 'user'`,
+           AND t.status = 'open'`,
         [sinceSupport]
       ),
       db.query(
@@ -708,7 +701,7 @@ router.get("/support/threads", async (_req, res, next) => {
         updatedAt: row.updated_at,
         lastMessageAt: row.last_message_at,
         lastSenderType: row.last_sender_type || "",
-        needsAdminReply: row.status === "open" && row.last_sender_type === "user",
+        needsAdminReply: row.status === "open",
         user: {
           fullName: row.full_name || "",
           phone: row.phone || "",

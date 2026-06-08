@@ -15,6 +15,7 @@ const db = require("./db");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || "0.0.0.0";
 const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const shouldAutoOpenBrowser = String(process.env.AUTO_OPEN_BROWSER || (!isProduction ? "1" : "0")) === "1";
 const webRoot = path.resolve(__dirname, "..", "..");
@@ -121,11 +122,14 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-const server = app.listen(port, () => {
+// eslint-disable-next-line no-console
+console.log(`Binding HTTP server on ${host}:${port}`);
+
+const server = app.listen(port, host, () => {
   const dbLabel = db.dbMode === "postgres" ? "PostgreSQL" : "in-memory (pg-mem)";
   const aiProvider = String(process.env.AI_PROVIDER || "auto").trim() || "auto";
   // eslint-disable-next-line no-console
-  console.log(`Site started at http://localhost:${port}`);
+  console.log(`Site started at http://${host}:${port}`);
   // eslint-disable-next-line no-console
   console.log(`Environment: ${isProduction ? "production" : "development"} | Database: ${dbLabel} | AI: ${aiProvider}`);
 

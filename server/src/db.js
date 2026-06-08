@@ -468,7 +468,6 @@ async function initDb() {
 
 const initPromise = initDb().catch((error) => {
   console.error("Database initialization failed:", error);
-  throw error;
 });
 
 async function query(sql, params = []) {

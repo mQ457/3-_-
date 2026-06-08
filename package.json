@@ -1,0 +1,10 @@
+{
+  "name": "print-service-site",
+  "private": true,
+  "description": "3D print service — frontend + Express backend",
+  "scripts": {
+    "start": "npm --prefix server start",
+    "dev": "npm --prefix server run dev",
+    "postinstall": "npm --prefix server install"
+  }
+}

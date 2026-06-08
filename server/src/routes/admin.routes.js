@@ -302,6 +302,7 @@ router.get("/orders", async (_req, res, next) => {
           modelingTask: row.modeling_task || "",
           fileName: row.file_name || "",
           filePath: row.file_path || "",
+          fileSize: Number(row.file_size || 0),
           cardMask: row.card_mask || "",
           address: [row.city, row.address_line].filter(Boolean).join(", "),
           delivery: mapOrderDeliveryFields(row),
@@ -321,10 +322,11 @@ router.get("/orders", async (_req, res, next) => {
 
 router.patch("/orders/:id", async (req, res, next) => {
   try {
-    const { status } = req.body || {};
+    const { status, totalAmount } = req.body || {};
     const normalizedStatus = String(status || "").trim();
-    if (!normalizedStatus) {
-      return res.status(400).json({ error: "VALIDATION_ERROR", message: "Укажите статус." });
+    const hasAmount = totalAmount !== undefined && totalAmount !== null && String(totalAmount).trim() !== "";
+    if (!normalizedStatus && !hasAmount) {
+      return res.status(400).json({ error: "VALIDATION_ERROR", message: "Укажите статус или сумму." });
     }
     const orderRes = await db.query(
       `SELECT o.id, o.user_id, o.order_number, o.service_type, o.status, o.details_json, u.email, u.full_name
@@ -339,7 +341,14 @@ router.patch("/orders/:id", async (req, res, next) => {
       return res.status(404).json({ error: "NOT_FOUND", message: "Заказ не найден." });
     }
     const serviceType = normalizeServiceType(order.service_type);
-    if (!isAllowedStatus(serviceType, normalizedStatus)) {
+    const canAdminSetAmount = serviceType === "scan" || serviceType === "modeling";
+    if (hasAmount && !canAdminSetAmount) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Цену вручную можно назначать только для сканирования и моделирования.",
+      });
+    }
+    if (normalizedStatus && !isAllowedStatus(serviceType, normalizedStatus)) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
         message: `Статус недоступен для услуги ${serviceType || "unknown"}.`,
@@ -354,7 +363,11 @@ router.patch("/orders/:id", async (req, res, next) => {
     }
     const reservation = details.inventoryReservation || null;
     const fromStatus = String(order.status || "");
-    const toStatus = normalizedStatus;
+    const toStatus = normalizedStatus || fromStatus;
+    const nextAmount = hasAmount ? Math.max(0, Math.round(Number(totalAmount || 0))) : null;
+    if (hasAmount && (!Number.isFinite(nextAmount) || nextAmount <= 0)) {
+      return res.status(400).json({ error: "VALIDATION_ERROR", message: "Сумма должна быть больше 0." });
+    }
     const finishStatuses = new Set(["Завершен", "Готов к выдаче", "Отправлен", "Модель готова"]);
     const cancelStatuses = new Set(["Отменен", "Отмена"]);
     if (reservation?.inventoryId && reservation?.reservedQty) {
@@ -389,11 +402,25 @@ router.patch("/orders/:id", async (req, res, next) => {
     await db.query(
       `UPDATE orders
        SET status = $1,
+           total_amount = COALESCE($4, total_amount),
+           subtotal_amount = COALESCE($4, subtotal_amount),
            details_json = $2,
            updated_at = datetime('now')
        WHERE id = $3`,
-      [normalizedStatus, JSON.stringify(details), req.params.id]
+      [toStatus, JSON.stringify(details), req.params.id, nextAmount]
     );
+    if (hasAmount) {
+      await db.query(
+        `INSERT INTO user_notifications (id, user_id, admin_id, sender_type, message, created_at)
+         VALUES ($1, $2, $3, 'admin', $4, datetime('now'))`,
+        [
+          crypto.randomUUID(),
+          order.user_id,
+          req.auth.userId,
+          `По заявке ${order.order_number || order.id} назначена предварительная стоимость: ${nextAmount.toLocaleString("ru-RU")} ₽. Менеджер свяжется с вами для подтверждения деталей.`,
+        ]
+      );
+    }
     if (toStatus === "Отправлен" || toStatus === "Готов к выдаче" || toStatus === "Завершен") {
       await syncClientPickupOnSent(req.params.id);
     }

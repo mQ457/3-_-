@@ -41,7 +41,7 @@ function shouldUseSsl(url) {
   }
 }
 
-const { pool } = createPool();
+const { pool, mode: dbMode } = createPool();
 
 function normalizeSql(sql) {
   let normalized = String(sql || "");
@@ -480,4 +480,4 @@ async function query(sql, params = []) {
   };
 }
 
-module.exports = { query, pool };
+module.exports = { query, pool, dbMode };

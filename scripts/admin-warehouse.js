@@ -15,11 +15,9 @@
 
   let options = [];
   let pricingRules = [];
-  const SERVICE_ORDER = ["print", "modeling", "scan"];
+  const SERVICE_ORDER = ["print"];
   const SERVICE_LABELS = {
     print: "3Д печать",
-    modeling: "Моделирование",
-    scan: "Сканирование",
   };
   const PRICING_FIELDS = [
     { key: "baseFee", label: "Базовая стоимость, ₽", step: "1", min: "0" },

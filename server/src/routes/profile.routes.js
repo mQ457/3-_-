@@ -9,7 +9,7 @@ const {
   appendThreadMessage,
 } = require("../domain/order-chat");
 const { notificationUpload } = require("../domain/notification-upload");
-const { processSupportBotReply } = require("../domain/support-bot");
+const { processSupportBotReply, shouldBotReplyToThread } = require("../domain/support-bot");
 const { publish } = require("../realtime");
 const { normalizePhone } = require("../auth");
 
@@ -473,7 +473,7 @@ router.post("/support/threads", requireAuth, async (req, res, next) => {
       [msgId, threadId, req.auth.userId, normalizedMessage]
     );
     publish("support:updated", { threadId });
-    if (existingThread.rows[0] && existingStatus === "open") {
+    if (existingThread.rows[0] && !shouldBotReplyToThread(existingStatus)) {
       return res.status(201).json({ ok: true, threadId, escalated: true, handledByBot: false });
     }
     const botResult = await processSupportBotReply({
@@ -550,7 +550,7 @@ router.post("/support/threads/:threadId/messages", requireAuth, async (req, res,
       [req.params.threadId]
     );
     publish("support:updated", { threadId: req.params.threadId });
-    if (threadRow.status === "open") {
+    if (!shouldBotReplyToThread(threadRow.status)) {
       return res.status(201).json({ ok: true, escalated: true, handledByBot: false });
     }
     const botResult = await processSupportBotReply({

@@ -16,11 +16,11 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const allowedExts = new Set(["stl", "obj", "amf", "3mf", "fbx"]);
+const allowedExts = new Set(["stl", "obj", "amf", "3mf", "fbx", "jpg", "jpeg", "png", "webp", "pdf", "dwg", "dxf"]);
 
 function modelExtFromFilename(name) {
   const lower = String(name || "").toLowerCase();
-  const ordered = ["3mf", "amf", "stl", "obj", "fbx"];
+  const ordered = ["3mf", "amf", "stl", "obj", "fbx", "jpeg", "jpg", "png", "webp", "pdf", "dwg", "dxf"];
   for (const ext of ordered) {
     if (lower.endsWith(`.${ext}`)) return ext;
   }
@@ -42,7 +42,7 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const ext = modelExtFromFilename(file.originalname);
     if (!ext || !allowedExts.has(ext)) {
-      cb(new Error("Поддерживаются только STL, OBJ, AMF, 3MF, FBX."));
+      cb(new Error("Поддерживаются STL, OBJ, AMF, 3MF, FBX, изображения, PDF, DWG и DXF."));
       return;
     }
     cb(null, true);
@@ -345,6 +345,7 @@ router.get("/", requireAuth, async (req, res, next) => {
         serviceName: order.service_name || "Услуга",
         fileName: order.file_name || "",
         filePath: order.file_path || "",
+        fileSize: Number(order.file_size || 0),
         modelingTask: order.modeling_task || "",
         details,
         paymentCardMask: order.card_mask || "",
@@ -389,10 +390,11 @@ router.post("/", requireAuth, async (req, res, next) => {
       modelVolumeCm3,
       complexity,
       estimatedHours,
+      serviceBrief,
+      quoteRequest,
       initialStatus,
     } = req.body || {};
     const normalizedInitialStatus = String(initialStatus || "").trim();
-    const orderStatus = normalizedInitialStatus || "Оплачен";
 
     const normalizedServiceType = normalizeServiceType(serviceType);
     if (!normalizedServiceType) {
@@ -401,10 +403,16 @@ router.post("/", requireAuth, async (req, res, next) => {
     if (getAllowedStatuses(normalizedServiceType).length === 0) {
       return res.status(400).json({ error: "VALIDATION_ERROR", message: "Неизвестный тип услуги." });
     }
+    const isQuoteRequest =
+      (normalizedServiceType === "modeling" || normalizedServiceType === "scan") &&
+      (quoteRequest === true || String(quoteRequest) === "1" || normalizedInitialStatus === "Ожидает оценки");
+    const orderStatus = isQuoteRequest ? "Ожидает оценки" : normalizedInitialStatus || "Оплачен";
 
     let finalAmount = Number(totalAmount);
     let inventoryReservation = null;
-    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+    if (isQuoteRequest) {
+      finalAmount = 0;
+    } else if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
       finalAmount = await calculateOrderPrice({
         serviceType: normalizedServiceType,
         material,
@@ -420,7 +428,9 @@ router.post("/", requireAuth, async (req, res, next) => {
     const normalizedDeliveryType = String(deliveryType || "").trim() || null;
     const normalizedDeliveryPrice = Math.max(0, Number(deliveryPrice || 0));
     const normalizedSubtotal =
-      Number.isFinite(Number(subtotalAmount)) && Number(subtotalAmount) > 0
+      isQuoteRequest
+        ? 0
+        : Number.isFinite(Number(subtotalAmount)) && Number(subtotalAmount) > 0
         ? Math.max(0, Number(subtotalAmount))
         : Math.max(0, finalAmount - normalizedDeliveryPrice);
     if (normalizedDeliveryType === "russian_post" && normalizedDeliveryPrice > 0) {
@@ -514,6 +524,7 @@ router.post("/", requireAuth, async (req, res, next) => {
       modelVolumeCm3: Number(modelVolumeCm3 || 0),
       complexity: Number(complexity || 1),
       estimatedHours: Number(estimatedHours || 0),
+      serviceBrief: serviceBrief && typeof serviceBrief === "object" ? serviceBrief : {},
       inventoryReservation,
     });
     await db.query(
@@ -559,6 +570,18 @@ router.post("/", requireAuth, async (req, res, next) => {
       tryCreatePochtaShipment(orderId).catch((error) => {
         console.warn("[pochta] auto shipment failed:", error.message);
       });
+    }
+
+    if (isQuoteRequest) {
+      await db.query(
+        `INSERT INTO user_notifications (id, user_id, sender_type, message, created_at)
+         VALUES ($1, $2, 'admin', $3, datetime('now'))`,
+        [
+          crypto.randomUUID(),
+          req.auth.userId,
+          `Ваша заявка ${orderNumber} получена и находится в обработке. В ближайшее время менеджер позвонит для обсуждения цены.`,
+        ]
+      );
     }
 
     res.status(201).json({ ok: true, orderId, orderNumber });

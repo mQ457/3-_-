@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: print-service
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTO_OPEN_BROWSER
+        value: "0"
+      - key: PORT
+        value: "3000"
+      - key: SUPPORT_BOT_ENABLED
+        value: "1"
+      - key: AI_PROVIDER
+        value: stub

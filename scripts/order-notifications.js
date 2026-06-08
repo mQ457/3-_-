@@ -1,11 +1,9 @@
 (function () {
   const API = window.AppBootstrap;
   if (!API || typeof API.request !== "function") return;
-  const protectedPaths = ["/profile.html", "/orders.html", "/delivery-address.html", "/payment.html"];
-  const pathname = String(window.location.pathname || "").toLowerCase().replace(/\\/g, "/");
-  if (!protectedPaths.includes(pathname)) return;
 
   let notifications = [];
+  let lastSeenNotificationId = "";
   let pollTimer = null;
 
   function escapeHtml(value) {
@@ -65,6 +63,34 @@
     const count = Number(value || 0);
     badge.textContent = String(count);
     badge.style.display = count > 0 ? "inline-flex" : "none";
+  }
+
+  function showToast(title, message) {
+    let toast = document.querySelector(".order-notify-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.className = "order-notify-toast";
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `
+      <div class="order-notify-toast__title">${escapeHtml(title || "Уведомление")}</div>
+      <div class="order-notify-toast__text">${escapeHtml(message || "")}</div>
+    `;
+    toast.classList.add("is-visible");
+    window.clearTimeout(showToast._timer);
+    showToast._timer = window.setTimeout(() => toast.classList.remove("is-visible"), 5200);
+  }
+
+  function consumeSessionToast() {
+    try {
+      const raw = sessionStorage.getItem("app.toast");
+      if (!raw) return;
+      sessionStorage.removeItem("app.toast");
+      const parsed = JSON.parse(raw);
+      showToast(parsed.title, parsed.message);
+    } catch (_error) {
+      // noop
+    }
   }
 
   async function loadUnread() {
@@ -138,7 +164,13 @@
   async function loadNotifications() {
     try {
       const data = await API.request("/profile/notifications?limit=20");
-      notifications = data.notifications || [];
+      const nextNotifications = data.notifications || [];
+      const newest = nextNotifications[nextNotifications.length - 1];
+      if (lastSeenNotificationId && newest?.id && newest.id !== lastSeenNotificationId && newest.senderType !== "user") {
+        showToast("Новое уведомление", newest.message || "");
+      }
+      if (newest?.id) lastSeenNotificationId = newest.id;
+      notifications = nextNotifications;
       renderNotifications();
     } catch (_error) {
       listRoot.innerHTML = '<div class="order-notify-empty">Не удалось загрузить уведомления.</div>';
@@ -167,7 +199,15 @@
   });
   replyForm?.addEventListener("submit", sendReply);
 
-  loadUnread();
-  loadNotifications();
-  startPolling();
+  API.bootstrapUser()
+    .then(() => {
+      consumeSessionToast();
+      loadUnread();
+      loadNotifications();
+      startPolling();
+    })
+    .catch(() => {
+      consumeSessionToast();
+      root.remove();
+    });
 })();

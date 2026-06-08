@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const db = require("../db");
 const { buildKnowledgeContext } = require("./support-knowledge");
+const { resolveStubReply, simulateStubThinking, FALLBACK_MESSAGE, REPEAT_HANDOFF_MESSAGE } = require("./support-stub");
 
 function cleanEnv(value, fallback = "") {
   const raw = String(value == null ? fallback : value).trim();
@@ -35,9 +36,12 @@ const SUPPORT_BOT_ENABLED = String(process.env.SUPPORT_BOT_ENABLED || "1") !== "
 const AI_PROVIDER_RAW = cleanEnv(process.env.AI_PROVIDER, "");
 const AI_PROVIDER = (() => {
   const normalized = AI_PROVIDER_RAW.toLowerCase();
-  if (normalized === "groq" || normalized === "ollama" || normalized === "gigachat") return normalized;
+  if (normalized === "groq" || normalized === "ollama" || normalized === "gigachat" || normalized === "stub") {
+    return normalized;
+  }
   if (GIGACHAT_AUTH_KEY) return "gigachat";
-  return GROQ_API_KEY ? "groq" : "ollama";
+  if (GROQ_API_KEY) return "groq";
+  return "stub";
 })();
 let gigachatTokenCache = null;
 
@@ -53,11 +57,11 @@ const HUMAN_PATTERNS = [
   /соедин[иьяю]*\s+с\s+(оператор|консультант|человек)/i,
   /свяж[иьяю]*\s+с\s+(оператор|консультант|человек|поддержк)/i,
   /(живой|реальный)\s+человек/i,
-  /\bчеловек[ау]?\b/i,
-  /\bоператор\b/i,
-  /\bконсультант\b/i,
-  /\bспециалист\b/i,
-  /\bагент\b/i,
+  /человек/i,
+  /оператор/i,
+  /консультант/i,
+  /специалист/i,
+  /агент/i,
 ];
 
 function wantsHumanByMessage(text) {
@@ -338,6 +342,9 @@ async function callGigaChat(prompt) {
 }
 
 async function callModel(prompt) {
+  if (AI_PROVIDER === "stub") {
+    throw new Error("Stub provider does not call external APIs");
+  }
   if (AI_PROVIDER === "groq" && !GROQ_API_KEY) {
     throw new Error("AI provider is groq but GROQ_API_KEY is not set");
   }
@@ -372,6 +379,35 @@ async function processSupportBotReply({ threadId, userMessage }) {
     await escalateThread(threadId);
     await insertBotMessage(threadId, "Подключаю консультанта. Пожалуйста, ожидайте ответа специалиста.");
     return { handledByBot: false, escalated: true, reason: "human_requested" };
+  }
+
+  if (AI_PROVIDER === "stub") {
+    try {
+      await simulateStubThinking();
+      const parsed = resolveStubReply(safeMessage);
+
+      if (parsed.action === "handoff") {
+        await escalateThread(threadId);
+        const alreadyOpen = String(context.thread.status || "") === "open";
+        const message =
+          alreadyOpen && parsed.message === FALLBACK_MESSAGE ? REPEAT_HANDOFF_MESSAGE : parsed.message;
+        await insertBotMessage(threadId, message);
+        return { handledByBot: false, escalated: true, reason: "stub_handoff", categoryId: parsed.categoryId || null };
+      }
+
+      await markThreadForBot(threadId);
+      await insertBotMessage(threadId, parsed.message);
+      return { handledByBot: true, escalated: false, reason: "stub_answer", categoryId: parsed.categoryId || null };
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[support-bot] stub reply failed:", error?.message || error);
+      await escalateThread(threadId);
+      await insertBotMessage(
+        threadId,
+        "Не получилось обработать запрос автоматически. Передаю обращение консультанту."
+      );
+      return { handledByBot: false, escalated: true, reason: "stub_error" };
+    }
   }
 
   try {
@@ -420,4 +456,11 @@ async function processSupportBotReply({ threadId, userMessage }) {
 module.exports = {
   processSupportBotReply,
   wantsHumanByMessage,
+  isStubProvider: () => AI_PROVIDER === "stub",
+  shouldBotReplyToThread: (status) => {
+    const normalized = String(status || "");
+    if (normalized === "closed") return false;
+    if (normalized === "open" && AI_PROVIDER !== "stub") return false;
+    return true;
+  },
 };

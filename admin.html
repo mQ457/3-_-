@@ -7,19 +7,6 @@
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
-  <div id="admin-login" class="admin-card admin-login">
-    <h1 style="margin-top:0;">Вход администратора</h1>
-    <p style="color:#99a2be;">Используйте admin-аккаунт (телефон и пароль).</p>
-    <form id="admin-login-form">
-      <div style="display:grid;gap:8px;">
-        <input name="phone" type="tel" inputmode="numeric" maxlength="16" placeholder="+79991234567" required />
-        <input name="password" type="password" placeholder="Пароль" required />
-        <button class="btn-primary" type="submit">Войти</button>
-      </div>
-      <div id="admin-login-status" style="margin-top:8px;color:#99a2be;"></div>
-    </form>
-  </div>
-
   <div id="admin-app" class="admin-shell" style="display:none;">
     <aside class="admin-sidebar">
       <div class="admin-brand">3Д Печать</div>
@@ -83,7 +70,7 @@
       </section>
     </main>
   </div>
-  <script src="scripts/admin-common.js"></script>
-  <script src="scripts/admin.js"></script>
+  <script src="scripts/admin-common.js?v=2"></script>
+  <script src="scripts/admin.js?v=2"></script>
 </body>
 </html>

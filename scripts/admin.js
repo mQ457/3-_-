@@ -1,9 +1,5 @@
 (function () {
-  const loginBlock = document.getElementById("admin-login");
   const appBlock = document.getElementById("admin-app");
-  const loginForm = document.getElementById("admin-login-form");
-  const loginStatus = document.getElementById("admin-login-status");
-  const phoneInput = loginForm?.elements?.phone;
   const statsRoot = document.getElementById("dashboard-stats");
   const ordersRoot = document.getElementById("dashboard-orders");
   const refreshBtn = document.getElementById("refresh-dashboard");
@@ -18,22 +14,6 @@
   function formatDate(value) {
     if (!value) return "—";
     return new Date(value).toLocaleString("ru-RU");
-  }
-
-  function normalizePhone(value) {
-    return String(value || "")
-      .replace(/[^\d+]/g, "")
-      .replace(/(?!^)\+/g, "");
-  }
-
-  function setupPhoneValidation() {
-    if (!phoneInput) return;
-    phoneInput.setAttribute("inputmode", "numeric");
-    phoneInput.setAttribute("pattern", "^[+]?[0-9]{10,15}$");
-    phoneInput.maxLength = 16;
-    phoneInput.addEventListener("input", () => {
-      phoneInput.value = normalizePhone(phoneInput.value);
-    });
   }
 
   function setEmailStatus(message, isError = false) {
@@ -112,43 +92,21 @@
   async function tryOpenAdmin() {
     try {
       await API.ensureAdmin();
-      loginBlock.style.display = "none";
       appBlock.style.display = "grid";
       API.wireLogout();
+    } catch {
+      window.location.replace("login.html?next=admin.html");
+      return;
+    }
+    try {
       await renderDashboard();
       await loadEmailSettings();
-    } catch {
-      loginBlock.style.display = "block";
-      appBlock.style.display = "none";
+    } catch (error) {
+      if (statsRoot) {
+        statsRoot.innerHTML = `<div class="stat"><div class="label">Ошибка загрузки</div><div class="value">${error.message || "—"}</div></div>`;
+      }
     }
   }
-
-  loginForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    loginStatus.textContent = "Вход...";
-    loginStatus.style.color = "#99a2be";
-    try {
-      const fd = new FormData(loginForm);
-      const phone = normalizePhone(fd.get("phone"));
-      if (!/^[+]?\d{10,15}$/.test(phone)) {
-        loginStatus.textContent = "Введите корректный номер телефона.";
-        loginStatus.style.color = "#ff7676";
-        return;
-      }
-      await API.request("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone,
-          password: String(fd.get("password") || ""),
-        }),
-      });
-      await tryOpenAdmin();
-    } catch (error) {
-      loginStatus.textContent = error.message;
-      loginStatus.style.color = "#ff7676";
-    }
-  });
 
   refreshBtn?.addEventListener("click", () => runWithButtonFeedback(refreshBtn, "Обновляем...", renderDashboard));
   directorEmailSaveBtn?.addEventListener("click", async () => {
@@ -198,6 +156,5 @@
     });
   });
   setInterval(updateReportButtonState, 1000);
-  setupPhoneValidation();
   tryOpenAdmin();
 })();

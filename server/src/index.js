@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("./load-env");
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
@@ -11,6 +11,7 @@ const orderRoutes = require("./routes/order.routes");
 const deliveryRoutes = require("./routes/delivery.routes");
 const reviewRoutes = require("./routes/review.routes");
 const { setBroadcaster } = require("./realtime");
+const db = require("./db");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -103,6 +104,9 @@ app.use((err, _req, res, _next) => {
   if (err?.message?.includes("STL, OBJ, AMF, 3MF, FBX")) {
     return res.status(400).json({ error: "VALIDATION_ERROR", message: err.message });
   }
+  if (err?.message?.includes("Поддерживаются STL")) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", message: err.message });
+  }
   if (err?.message?.includes("Разрешены файлы:")) {
     return res.status(400).json({ error: "VALIDATION_ERROR", message: err.message });
   }
@@ -118,8 +122,17 @@ app.use((err, _req, res, _next) => {
 });
 
 const server = app.listen(port, () => {
+  const dbLabel = db.dbMode === "postgres" ? "PostgreSQL" : "in-memory (pg-mem)";
+  const aiProvider = String(process.env.AI_PROVIDER || "auto").trim() || "auto";
   // eslint-disable-next-line no-console
   console.log(`Site started at http://localhost:${port}`);
+  // eslint-disable-next-line no-console
+  console.log(`Environment: ${isProduction ? "production" : "development"} | Database: ${dbLabel} | AI: ${aiProvider}`);
+
+  if (!process.env.DATABASE_URL && isProduction) {
+    // eslint-disable-next-line no-console
+    console.warn("WARNING: DATABASE_URL is not set. Data will not persist between restarts on Render.");
+  }
 
   if (shouldAutoOpenBrowser) {
     // автоматически открываем сайт только при локальном запуске

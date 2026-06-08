@@ -3,7 +3,7 @@
   const tbody = document.querySelector(".orders-table tbody");
   const ORDER_TOGGLE_SRC = "image/Frame_1_1179.png";
   const doneStatuses = new Set(["Завершен", "Готов к выдаче", "Модель готова", "Отправлен"]);
-  const progressStatuses = new Set(["В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
+  const progressStatuses = new Set(["Ожидает оценки", "Ожидание звонка", "В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
 
   function formatDate(value) {
     try {
@@ -29,7 +29,7 @@
 
   function formatAmount(value) {
     const amount = Number(value || 0);
-    if (!Number.isFinite(amount) || amount <= 0) return "Не указано";
+    if (!Number.isFinite(amount) || amount <= 0) return "Цена уточняется";
     return `${amount.toLocaleString("ru-RU")} руб.`;
   }
 
@@ -78,6 +78,40 @@
       .join("");
   }
 
+  function detailRow(label, value) {
+    return `<div class="order-kv"><span class="order-kv__key">${escapeHtml(label)}</span><span class="order-kv__value">${escapeHtml(notEmpty(value))}</span></div>`;
+  }
+
+  function buildServiceBriefRows(order) {
+    const brief = order.details?.serviceBrief || {};
+    if (!brief || typeof brief !== "object" || Object.keys(brief).length === 0) {
+      return detailRow("Анкета", "Не заполнена");
+    }
+    if (order.serviceType === "modeling") {
+      return [
+        detailRow("Что нужно сделать", brief.kindLabel),
+        detailRow("Тип модели", brief.objectTypeLabel),
+        detailRow("Точность", brief.accuracyLabel),
+        detailRow("Печатать после моделирования", brief.printAfterModeling ? "Да" : "Нет"),
+        detailRow("Описание", brief.description),
+      ].join("");
+    }
+    if (order.serviceType === "scan") {
+      const dimensions = [brief.lengthMm, brief.widthMm, brief.heightMm].filter((value) => Number(value) > 0);
+      return [
+        detailRow("Что сканируем", brief.objectTypeLabel),
+        detailRow("Размер", brief.objectSizeLabel),
+        detailRow("Габариты", dimensions.length ? `${dimensions.join(" × ")} мм` : ""),
+        detailRow("Поверхность", brief.surfaceTypeLabel),
+        detailRow("Результат", brief.resultTypeLabel),
+        detailRow("Точность", brief.accuracyLabel),
+        detailRow("Передача объекта", brief.transferMethodLabel),
+        detailRow("Комментарий", brief.description),
+      ].join("");
+    }
+    return detailRow("Анкета", "Для 3Д-печати не требуется");
+  }
+
   function getStatusClass(status) {
     if (doneStatuses.has(status)) return "ok";
     if (progressStatuses.has(status)) return "progress";
@@ -119,6 +153,7 @@
     const safeFileSize = escapeHtml(formatFileSize(order.fileSize));
     const safeOrderNumber = escapeHtml(notEmpty(order.orderNumber || order.id?.slice(0, 8)));
     const detailsHtml = buildDetailRows(order.details || {});
+    const serviceBriefHtml = buildServiceBriefRows(order);
     const hasFile = Boolean(order.filePath);
     const fileHref = hasFile ? escapeHtml(order.filePath) : "#";
     return `
@@ -133,7 +168,7 @@
         <td>${safeAmount}</td>
         <td>
           <button class="btn btn-ghost js-toggle-order orders-toggle-btn" type="button" data-order-id="${escapeHtml(order.id)}" aria-expanded="false" aria-label="Развернуть детали заказа">
-            <img class="orders-toggle-icon" src="${ORDER_TOGGLE_SRC}" width="16" height="16" alt="">
+            <span class="orders-toggle-icon" aria-hidden="true"></span>
           </button>
         </td>
       </tr>
@@ -162,6 +197,10 @@
               <div class="order-kv"><span class="order-kv__key">Файл</span><span class="order-kv__value">${safeFile}</span></div>
               <div class="order-kv"><span class="order-kv__key">Размер файла</span><span class="order-kv__value">${safeFileSize}</span></div>
               <div class="order-kv"><span class="order-kv__key">ТЗ</span><span class="order-kv__value">${safeTask}</span></div>
+            </section>
+            <section class="order-details-block">
+              <div class="order-details-title">Анкета услуги</div>
+              ${serviceBriefHtml}
             </section>
             <section class="order-details-block order-details-block--actions">
               <div class="order-details-title">Действия</div>
@@ -207,6 +246,7 @@
           const opened = row.style.display !== "none";
           row.style.display = opened ? "none" : "table-row";
           const nowOpen = row.style.display !== "none";
+          row.classList.toggle("is-open", nowOpen);
           button.classList.toggle("is-expanded", nowOpen);
           button.setAttribute("aria-expanded", nowOpen ? "true" : "false");
           button.setAttribute("aria-label", nowOpen ? "Свернуть детали заказа" : "Развернуть детали заказа");

@@ -1,11 +1,47 @@
 # Auth API (Express + Postgres)
 
-## 1) Setup
+## Быстрый старт
+
+### Локально
+
+```bash
+# из корня репозитория
+npm install
+copy server\.env.example server\.env   # Windows
+# заполните server/.env (минимум GIGACHAT_AUTH_KEY для ИИ-поддержки)
+npm start
+```
+
+Сайт: `http://localhost:3000`
+
+Без `DATABASE_URL` в `.env` сервер использует in-memory БД — удобно для проверки, но данные сбрасываются после перезапуска. Для постоянных данных укажите Neon/Postgres в `DATABASE_URL`.
+
+### Render
+
+1. Подключите репозиторий на [render.com](https://render.com).
+2. **Root Directory:** `server` (или используйте `render.yaml` из корня — Blueprint подхватит настройки).
+3. **Build Command:** `npm install`
+4. **Start Command:** `npm start`
+5. В **Environment** задайте переменные (см. блок «Render» в `server/.env.example`).
+
+Обязательно на Render:
+- `DATABASE_URL` — строка подключения Neon/Supabase
+- `NODE_ENV=production`
+- `CORS_ORIGIN=https://<ваш-сервис>.onrender.com`
+- `GIGACHAT_AUTH_KEY` и `GIGACHAT_TLS_INSECURE=1` (если используете GigaChat)
+- `AUTO_OPEN_BROWSER=0`
+
+Health check: `GET /api/health`
+
+---
+
+## 1) Setup (подробнее)
 
 1. Copy `.env.example` to `.env`.
 2. Set `DATABASE_URL` in `.env` (for example Neon/Supabase/local Postgres).
-3. Install dependencies in the `server` folder:
-   - `cd server && npm install`
+3. Install dependencies:
+   - from repo root: `npm install`
+   - or only server: `cd server && npm install`
 4. On first start the server creates tables automatically from `sql/init.sql`, seeds service options and ensures admin account.
 
 Default admin credentials (if not overridden via env):
@@ -19,29 +55,33 @@ You can override them with:
 
 ## 2) Run locally
 
-- Dev: `cd server && npm run dev`
-- Prod: `cd server && npm start`
+- From repo root: `npm start` or `npm run dev`
+- From server folder: `npm start` or `npm run dev`
 
 Server starts on `http://localhost:3000` by default.
 
-## 2.1) AI support bot (GigaChat)
+## 2.1) AI support bot (заглушка, по умолчанию)
 
-Support chat can auto-reply with GigaChat and escalate to human admin when needed.
+Без внешних API: бот отвечает заготовленными текстами по ключевым словам и выглядит как ИИ-помощник.
 
 Set env:
 - `SUPPORT_BOT_ENABLED=1`
-- `AI_PROVIDER=gigachat`
-- `GIGACHAT_AUTH_KEY=<base64 authorization key>`
-- `GIGACHAT_MODEL=GigaChat`
-- `GIGACHAT_SCOPE=GIGACHAT_API_PERS`
-- optional: `GIGACHAT_TLS_INSECURE=1` only for local certificate troubleshooting
+- `AI_PROVIDER=stub`
 
-Escalation behavior:
-- If user asks for a human (operator/consultant/specialist), thread is moved to human queue (`status=open`).
-- If AI handles request, thread stays visible to user (`status=bot_active`).
-- Only admin manual close changes thread to `status=closed` and hides it from the user.
+Поведение:
+- Вопрос распознан (заказ, доставка, материалы и т.д.) → ответ из базы шаблонов, статус `bot_active`.
+- Вопрос не распознан → сообщение «не понял вопрос» и передача консультанту (`status=open`).
+- Запрос оператора / возврат / спорный платёж → передача консультанту.
 
-## 2.1.1) Local AI support bot (Ollama)
+Заготовки: `server/src/domain/support-stub.js` — можно дополнять категории и тексты.
+
+## 2.2) AI support bot (GigaChat / Groq / Ollama)
+
+Если позже появится рабочий API, укажите провайдера:
+
+Set env:
+- `AI_PROVIDER=gigachat` (или `groq`, `ollama`)
+- ключи провайдера — см. `.env.example`
 
 Support chat can also auto-reply with a local LLM and escalate to human admin only when needed.
 
@@ -94,13 +134,13 @@ Render web service:
 5. Set **Start Command** to `npm start`.
 
 Environment Variables in Render:
-- `PORT=3000`
-- `DATABASE_URL=postgresql://...` (your Neon connection string)
+- `DATABASE_URL=postgresql://...` (your Neon connection string) — **required**
 - `SESSION_COOKIE_NAME=session_token`
 - `SESSION_TTL_DAYS=7`
 - `CORS_ORIGIN=https://<your-service>.onrender.com` (if several domains are needed, separate with commas)
 - `NODE_ENV=production`
 - `AUTO_OPEN_BROWSER=0`
+- `SUPPORT_BOT_ENABLED=1`, `AI_PROVIDER=stub`
 - optional: `ADMIN_PHONE=+79990000000`
 - optional: `ADMIN_PASSWORD=Admin12345!`
 

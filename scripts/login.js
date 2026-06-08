@@ -16,6 +16,9 @@
     "orders.html",
     "delivery-address.html",
     "payment.html",
+    "print-step-1.html",
+    "print-step-2.html",
+    "print-step-3.html",
     "admin.html",
   ]);
 
@@ -120,6 +123,11 @@
     if (role === "admin") {
       return "admin.html";
     }
+    if (target === "admin.html") {
+      const error = new Error("У этого аккаунта нет прав администратора.");
+      error.code = "ADMIN_FORBIDDEN";
+      throw error;
+    }
     return target || "profile.html";
   }
 
@@ -192,7 +200,11 @@
       }
       setStatus("Успешный вход. Переходим...", false, "login");
       setTimeout(() => {
-        window.location.href = consumePostAuthTarget(data?.user?.role);
+        try {
+          window.location.href = consumePostAuthTarget(data?.user?.role);
+        } catch (redirectError) {
+          setStatus(redirectError.message || "Нет доступа.", true, "login");
+        }
       }, 300);
     } catch (error) {
       setStatus(error.message, true);
@@ -213,7 +225,11 @@
       }
       setStatus("Аккаунт создан. Переходим дальше...", false, "register");
       setTimeout(() => {
-        window.location.href = consumePostAuthTarget(data?.user?.role);
+        try {
+          window.location.href = consumePostAuthTarget(data?.user?.role);
+        } catch (redirectError) {
+          setStatus(redirectError.message || "Нет доступа.", true, "register");
+        }
       }, 300);
     } catch (error) {
       setStatus(error.message, true, "register");
@@ -230,7 +246,11 @@
 
   request("/auth/me", "GET")
     .then((data) => {
-      window.location.href = consumePostAuthTarget(data?.user?.role);
+      try {
+        window.location.href = consumePostAuthTarget(data?.user?.role);
+      } catch (error) {
+        setStatus(error.message || "Нет доступа.", true, "login");
+      }
     })
     .catch(() => {});
 

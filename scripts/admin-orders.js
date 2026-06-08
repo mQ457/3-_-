@@ -7,7 +7,7 @@
   const refreshBtn = document.getElementById("refresh-orders");
   let allOrders = [];
   const doneStatuses = new Set(["Завершен", "Готов к выдаче", "Модель готова", "Отправлен"]);
-  const progressStatuses = new Set(["В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
+  const progressStatuses = new Set(["Ожидает оценки", "Ожидание звонка", "В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
   const ORDER_TOGGLE_SRC = "image/Frame_1_1179.png";
 
   /**
@@ -39,27 +39,94 @@
     return new Date(dateStr).toLocaleString("ru-RU");
   }
 
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function notEmpty(value) {
+    const normalized = String(value ?? "").trim();
+    return normalized ? normalized : "Не указано";
+  }
+
+  function detailRow(label, value) {
+    return `<div class="admin-order-kv"><span class="admin-order-kv__key">${escapeHtml(label)}</span><span class="admin-order-kv__value">${escapeHtml(notEmpty(value))}</span></div>`;
+  }
+
+  function yesNo(value) {
+    return value ? "Да" : "Нет";
+  }
+
+  function buildServiceBriefRows(order) {
+    const brief = order.details?.serviceBrief || {};
+    if (!brief || typeof brief !== "object" || Object.keys(brief).length === 0) {
+      return detailRow("Анкета", "Не заполнена");
+    }
+    if (order.serviceType === "modeling") {
+      return [
+        detailRow("Что нужно сделать", brief.kindLabel),
+        detailRow("Тип модели", brief.objectTypeLabel),
+        detailRow("Точность", brief.accuracyLabel),
+        detailRow("Печатать после моделирования", yesNo(brief.printAfterModeling)),
+        detailRow("Описание", brief.description),
+      ].join("");
+    }
+    if (order.serviceType === "scan") {
+      const dimensions = [brief.lengthMm, brief.widthMm, brief.heightMm].filter((value) => Number(value) > 0);
+      return [
+        detailRow("Что сканируем", brief.objectTypeLabel),
+        detailRow("Размер", brief.objectSizeLabel),
+        detailRow("Габариты", dimensions.length ? `${dimensions.join(" × ")} мм` : ""),
+        detailRow("Поверхность", brief.surfaceTypeLabel),
+        detailRow("Результат", brief.resultTypeLabel),
+        detailRow("Точность", brief.accuracyLabel),
+        detailRow("Передача объекта", brief.transferMethodLabel),
+        detailRow("Комментарий", brief.description),
+      ].join("");
+    }
+    return detailRow("Анкета", "Для 3Д-печати не требуется");
+  }
+
   function getStatusClass(status) {
     if (doneStatuses.has(status)) return "ok";
     if (progressStatuses.has(status)) return "progress";
     return "wait";
   }
 
+  function formatAmount(value) {
+    const amount = Number(value || 0);
+    if (!Number.isFinite(amount) || amount <= 0) return "Цена уточняется";
+    return `${amount.toLocaleString("ru-RU")} ₽`;
+  }
+
   function createRow(order) {
     const statuses = Array.isArray(order.allowedStatuses) && order.allowedStatuses.length ? order.allowedStatuses : [order.status];
+    const isPrintService = order.serviceType === "print";
+    const isQuoteService = order.serviceType === "scan" || order.serviceType === "modeling";
     const safeAddress = (order.address || "").replace(/</g, "&lt;");
-    const safeTask = (order.modelingTask || "").replace(/</g, "&lt;");
+    const safeTask = escapeHtml(order.modelingTask || "");
     const safeFilePath = (order.filePath || "").replace(/"/g, "&quot;");
     const dlName = escapeAttr(downloadFileName(order));
-    const safeName = (order.user?.fullName || "—").replace(/</g, "&lt;");
-    const safePhone = (order.user?.phone || "—").replace(/</g, "&lt;");
-    const safeEmail = (order.user?.email || "—").replace(/</g, "&lt;");
-    const safeOrderId = (order.id || "—").replace(/</g, "&lt;");
-    const safeServiceType = (order.serviceType || "—").replace(/</g, "&lt;");
-    const safeCardMask = (order.cardMask || "—").replace(/</g, "&lt;");
-    const safeFileName = (order.fileName || "Не указано").replace(/</g, "&lt;");
+    const safeName = escapeHtml(order.user?.fullName || "—");
+    const safePhone = escapeHtml(order.user?.phone || "—");
+    const safeEmail = escapeHtml(order.user?.email || "—");
+    const safeOrderId = escapeHtml(order.id || "—");
+    const safeServiceType = escapeHtml(order.serviceType || "—");
+    const safeCardMask = escapeHtml(order.cardMask || "—");
+    const safeFileName = escapeHtml(order.fileName || "Не указано");
     const safeFileSize = Number(order.fileSize || 0) > 0 ? `${Number(order.fileSize).toLocaleString("ru-RU")} Б` : "Не указано";
     const details = order.details || {};
+    const brief = details.serviceBrief || {};
+    const safeServiceLabel = escapeHtml(order.serviceName || order.serviceType || "—");
+    const safeStatus = escapeHtml(order.status || "—");
+    const safeCreatedAt = escapeHtml(formatDate(order.createdAt));
+    const safeAmount = escapeHtml(formatAmount(order.totalAmount));
+    const hasBrief = brief && typeof brief === "object" && Object.keys(brief).length > 0;
+    const hasFile = Boolean(order.fileName || order.filePath);
     const safeQty = Number(details.qty || 0) > 0 ? Number(details.qty).toLocaleString("ru-RU") : "Не указано";
     const safeTechnology = String(details.technology || "Не указано").replace(/</g, "&lt;");
     const safeMaterial = String(details.material || "Не указано").replace(/</g, "&lt;");
@@ -71,6 +138,54 @@
     const safeComplexity = Number(details.complexity || 0) > 0 ? Number(details.complexity).toLocaleString("ru-RU") : "Не указано";
     const safeHours =
       Number(details.estimatedHours || 0) > 0 ? Number(details.estimatedHours).toLocaleString("ru-RU") : "Не указано";
+    const orderMetaSection = isQuoteService
+      ? `<section class="admin-order-details-block">
+          <div class="admin-order-details__title">Заявка</div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">ID заявки</span><span class="admin-order-kv__value">${safeOrderId}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Тип заявки</span><span class="admin-order-kv__value">${safeServiceLabel}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Статус</span><span class="admin-order-kv__value">${safeStatus}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Создана</span><span class="admin-order-kv__value">${safeCreatedAt}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Цена</span><span class="admin-order-kv__value">${safeAmount}</span></div>
+        </section>`
+      : `<section class="admin-order-details-block">
+          <div class="admin-order-details__title">Заказ и доставка</div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">ID заказа</span><span class="admin-order-kv__value">${safeOrderId}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Тип услуги</span><span class="admin-order-kv__value">${safeServiceType}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">ПВЗ / адрес</span><span class="admin-order-kv__value">${(order.delivery?.deliveryPointAddress || safeAddress) || "Не указано"}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Индекс</span><span class="admin-order-kv__value">${order.delivery?.deliveryPointIndex || "—"}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Доставка</span><span class="admin-order-kv__value">${order.delivery?.deliveryPrice > 0 ? `${order.delivery.deliveryPrice} ₽` : "—"}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">ШПИ</span><span class="admin-order-kv__value">${order.delivery?.shipmentBarcode || order.delivery?.trackingNumber || "—"}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Карта оплаты</span><span class="admin-order-kv__value">${safeCardMask}</span></div>
+        </section>`;
+    const productionOrQuoteSection = isPrintService
+      ? `<section class="admin-order-details-block">
+          <div class="admin-order-details__title">Параметры производства</div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Количество</span><span class="admin-order-kv__value">${safeQty}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Технология</span><span class="admin-order-kv__value">${safeTechnology}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Материал</span><span class="admin-order-kv__value">${safeMaterial}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Цвет</span><span class="admin-order-kv__value">${safeColor}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Толщина</span><span class="admin-order-kv__value">${safeThickness}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Объем модели</span><span class="admin-order-kv__value">${safeVolume}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Сложность</span><span class="admin-order-kv__value">${safeComplexity}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Оценка часов</span><span class="admin-order-kv__value">${safeHours}</span></div>
+        </section>`
+      : `<section class="admin-order-details-block">
+          <div class="admin-order-details__title">Данные заявки</div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Тип заявки</span><span class="admin-order-kv__value">${safeServiceLabel}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Цена</span><span class="admin-order-kv__value">${safeAmount}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Файл</span><span class="admin-order-kv__value">${hasFile ? "Есть" : "Нет"}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Анкета</span><span class="admin-order-kv__value">${hasBrief ? "Заполнена" : "Не заполнена"}</span></div>
+          <div class="admin-order-kv"><span class="admin-order-kv__key">Комментарий</span><span class="admin-order-kv__value">${safeTask || "Не указано"}</span></div>
+        </section>`;
+    const priceSetterHtml = isQuoteService
+      ? `<div class="admin-order-price-setter">
+          <input class="input" type="number" min="1" step="1" placeholder="Назначить цену, ₽" data-order-price-input="${order.id}" value="${Number(order.totalAmount || 0) > 0 ? Number(order.totalAmount || 0) : ""}">
+          <button class="btn-secondary" type="button" data-order-price-save="${order.id}">Сохранить цену</button>
+        </div>`
+      : `<div class="admin-order-kv">
+          <span class="admin-order-kv__key">Цена</span>
+          <span class="admin-order-kv__value">${safeAmount}</span>
+        </div>`;
     return `
       <tr class="admin-orders-row-main">
         <td>${order.orderNumber || order.id.slice(0, 8)}</td>
@@ -85,7 +200,7 @@
               .join("")}
           </select>
         </td>
-        <td>${order.totalAmount || 0} ₽</td>
+        <td>${formatAmount(order.totalAmount)}</td>
         <td>${formatDate(order.createdAt)}</td>
         <td><button class="btn-secondary admin-orders-toggle" type="button" data-toggle-order="${order.id}" aria-expanded="false" aria-label="Показать детали заказа"><img class="admin-orders-toggle__icon" src="${ORDER_TOGGLE_SRC}" width="18" height="18" alt=""></button></td>
       </tr>
@@ -98,35 +213,21 @@
               <div class="admin-order-kv"><span class="admin-order-kv__key">Телефон</span><span class="admin-order-kv__value">${safePhone}</span></div>
               <div class="admin-order-kv"><span class="admin-order-kv__key">Email</span><span class="admin-order-kv__value">${safeEmail}</span></div>
             </section>
-            <section class="admin-order-details-block">
-              <div class="admin-order-details__title">Заказ и доставка</div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">ID заказа</span><span class="admin-order-kv__value">${safeOrderId}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Тип услуги</span><span class="admin-order-kv__value">${safeServiceType}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">ПВЗ / адрес</span><span class="admin-order-kv__value">${(order.delivery?.deliveryPointAddress || safeAddress) || "Не указано"}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Индекс</span><span class="admin-order-kv__value">${order.delivery?.deliveryPointIndex || "—"}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Доставка</span><span class="admin-order-kv__value">${order.delivery?.deliveryPrice > 0 ? `${order.delivery.deliveryPrice} ₽` : "—"}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">ШПИ</span><span class="admin-order-kv__value">${order.delivery?.shipmentBarcode || order.delivery?.trackingNumber || "—"}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Карта оплаты</span><span class="admin-order-kv__value">${safeCardMask}</span></div>
-            </section>
-            <section class="admin-order-details-block">
-              <div class="admin-order-details__title">Параметры производства</div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Количество</span><span class="admin-order-kv__value">${safeQty}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Технология</span><span class="admin-order-kv__value">${safeTechnology}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Материал</span><span class="admin-order-kv__value">${safeMaterial}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Цвет</span><span class="admin-order-kv__value">${safeColor}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Толщина</span><span class="admin-order-kv__value">${safeThickness}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Объем модели</span><span class="admin-order-kv__value">${safeVolume}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Сложность</span><span class="admin-order-kv__value">${safeComplexity}</span></div>
-              <div class="admin-order-kv"><span class="admin-order-kv__key">Оценка часов</span><span class="admin-order-kv__value">${safeHours}</span></div>
-            </section>
+            ${orderMetaSection}
+            ${productionOrQuoteSection}
             <section class="admin-order-details-block">
               <div class="admin-order-details__title">Файл и комментарий</div>
               <div class="admin-order-kv"><span class="admin-order-kv__key">Файл</span><span class="admin-order-kv__value">${safeFileName}</span></div>
               <div class="admin-order-kv"><span class="admin-order-kv__key">Размер файла</span><span class="admin-order-kv__value">${safeFileSize}</span></div>
               <div class="admin-order-kv"><span class="admin-order-kv__key">ТЗ</span><span class="admin-order-kv__value">${safeTask || "Не указано"}</span></div>
             </section>
+            <section class="admin-order-details-block">
+              <div class="admin-order-details__title">Анкета услуги</div>
+              ${buildServiceBriefRows(order)}
+            </section>
             <section class="admin-order-details-block admin-order-details-block--actions">
               <div class="admin-order-details__title">Действия</div>
+              ${priceSetterHtml}
               <button class="btn-secondary" data-order-user="${order.user?.id || ""}">Профиль</button>
               <button class="btn-secondary" data-open-order-notify="${order.orderNumber || order.id}">Уведомить клиента</button>
               ${
@@ -209,6 +310,28 @@
         if (!userId) return;
         const data = await API.request(`/admin/user-full/${userId}`);
         alert(`Клиент: ${data.user.full_name || "—"}\nТелефон: ${data.user.phone || "—"}\nАдресов: ${data.addresses.length}\nКарт: ${data.paymentMethods.length}`);
+      });
+    });
+
+    tbody.querySelectorAll("[data-order-price-save]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const orderId = btn.getAttribute("data-order-price-save");
+        const input = tbody.querySelector(`[data-order-price-input="${orderId}"]`);
+        const amount = Math.round(Number(input?.value || 0));
+        if (!orderId || !Number.isFinite(amount) || amount <= 0) {
+          alert("Введите сумму больше 0.");
+          return;
+        }
+        try {
+          await API.request(`/admin/orders/${orderId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ totalAmount: amount }),
+          });
+          await loadOrders();
+        } catch (error) {
+          alert(error.message || "Не удалось сохранить цену");
+        }
       });
     });
 

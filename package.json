@@ -5,6 +5,6 @@
   "scripts": {
     "start": "npm --prefix server start",
     "dev": "npm --prefix server run dev",
-    "postinstall": "npm --prefix server install"
+    "setup": "npm install --prefix server"
   }
 }

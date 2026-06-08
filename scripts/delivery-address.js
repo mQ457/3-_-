@@ -4,7 +4,6 @@
   const lineInput = document.getElementById("address-line");
   const saveBtn = document.getElementById("save-address-btn");
   const citySearchBtn = document.getElementById("address-search-btn");
-  const addressSearchBtn = document.getElementById("address-locate-btn");
   const statusEl = document.getElementById("address-status");
   const listEl = document.getElementById("saved-addresses");
   const mapContainer = document.getElementById("delivery-map");
@@ -197,7 +196,7 @@
     }
 
     map.setCenter(cityCoords, 11, { duration: 250 });
-    setStatus("Город найден. Введите адрес и нажмите «Найти адрес».", false);
+    setStatus("Город найден. Введите адрес и нажмите Enter.", false);
   }
 
   async function searchByAddress() {
@@ -238,7 +237,7 @@
       });
       clearMapMessage();
       map.events.add("click", () => {
-        setStatus("Введите адрес и нажмите «Найти адрес», либо выберите сохраненный адрес.", false);
+        setStatus("Введите адрес и нажмите Enter, либо выберите сохраненный адрес.", false);
       });
       searchByCity().catch((error) => setStatus(extractYandexErrorMessage(error), true));
     });
@@ -315,10 +314,6 @@
     searchByCity().catch((error) => {
       setStatus(extractYandexErrorMessage(error), true);
     });
-  });
-
-  addressSearchBtn?.addEventListener("click", () => {
-    searchByAddress().catch((error) => setStatus(extractYandexErrorMessage(error), true));
   });
 
   cityInput?.addEventListener("keydown", (event) => {

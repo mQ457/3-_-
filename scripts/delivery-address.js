@@ -14,7 +14,9 @@
   let selectedPoint = null;
 
   if (lineInput) {
-    lineInput.placeholder = "Улица, дом, корпус, например: Тверская 7";
+    lineInput.placeholder = "Выберите адрес на карте или введите вручную";
+    lineInput.disabled = false;
+    lineInput.readOnly = false;
   }
 
   function setStatus(message, isError) {
@@ -237,7 +239,7 @@
       });
       clearMapMessage();
       map.events.add("click", () => {
-        setStatus("Введите адрес и нажмите Enter, либо выберите сохраненный адрес.", false);
+        setStatus("Выберите адрес на карте или введите его вручную в поле выше.", false);
       });
       searchByCity().catch((error) => setStatus(extractYandexErrorMessage(error), true));
     });

@@ -3,21 +3,19 @@
   const cityInput = document.getElementById("address-city");
   const lineInput = document.getElementById("address-line");
   const saveBtn = document.getElementById("save-address-btn");
-  const searchBtn = document.getElementById("address-search-btn");
+  const citySearchBtn = document.getElementById("address-search-btn");
+  const addressSearchBtn = document.getElementById("address-locate-btn");
   const statusEl = document.getElementById("address-status");
   const listEl = document.getElementById("saved-addresses");
   const mapContainer = document.getElementById("delivery-map");
-  const skipDeliveryInput = document.getElementById("skip-delivery");
   const DELIVERY_SELECTION_KEY = "delivery_selection";
 
   let map = null;
   let selectedMarker = null;
-  let postOfficeCollection = null;
-  let selectedPickupPoint = null;
+  let selectedPoint = null;
 
   if (lineInput) {
-    lineInput.readOnly = true;
-    lineInput.placeholder = "Выберите пункт выдачи Почты России на карте";
+    lineInput.placeholder = "Улица, дом, корпус, например: Тверская 7";
   }
 
   function setStatus(message, isError) {
@@ -77,45 +75,23 @@
     return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
   }
 
-  function parseAddressParts(geoObject, fallbackCity) {
-    const text = geoObject?.properties?.get("text") || geoObject?.properties?.get("name") || "Почта России";
-    const line = typeof geoObject?.getAddressLine === "function" ? geoObject.getAddressLine() : text;
-    const meta = geoObject?.properties?.get("metaDataProperty.GeocoderMetaData") || {};
-    const parts = meta?.Address?.Components;
-    let city = fallbackCity || "";
-    if (Array.isArray(parts)) {
-      const cityPart = parts.find((item) => item.kind === "locality" || item.kind === "province");
-      city = cityPart?.name || city;
-    }
-    return { line, city };
-  }
-
-  function distanceScore(a, b) {
-    if (!Array.isArray(a) || !Array.isArray(b)) return Number.POSITIVE_INFINITY;
-    const lat = a[0] - b[0];
-    const lng = a[1] - b[1];
-    return lat * lat + lng * lng;
-  }
-
   function persistDeliverySelection(extra) {
     const payload = {
-      deliveryType: skipDeliveryInput?.checked ? "none" : "russian_post",
-      deliveryPointIndex: selectedPickupPoint?.postalCode || "",
-      deliveryPointAddress: selectedPickupPoint?.address || "",
-      deliveryPointId: selectedPickupPoint?.postalCode || "",
+      deliveryType: "manual",
+      deliveryPointAddress: selectedPoint?.address || String(lineInput?.value || "").trim(),
+      deliveryPointId: selectedPoint?.id || "",
       deliveryPrice: Number(extra?.deliveryPrice || 0),
-      city: selectedPickupPoint?.city || String(cityInput?.value || "").trim(),
+      city: selectedPoint?.city || String(cityInput?.value || "").trim(),
     };
     sessionStorage.setItem(DELIVERY_SELECTION_KEY, JSON.stringify(payload));
     try {
       const checkout = JSON.parse(sessionStorage.getItem("checkout_payload") || "{}");
       checkout.deliveryType = payload.deliveryType;
-      checkout.deliveryPointIndex = payload.deliveryPointIndex;
       checkout.deliveryPointAddress = payload.deliveryPointAddress;
       checkout.deliveryPointId = payload.deliveryPointId;
       checkout.deliveryAmount = payload.deliveryPrice;
       checkout.subtotalAmount = Number(checkout.subtotalAmount ?? checkout.totalAmount ?? 0);
-      if (payload.deliveryType === "russian_post") {
+      if (payload.deliveryType !== "none") {
         checkout.totalAmount = checkout.subtotalAmount + payload.deliveryPrice;
       }
       sessionStorage.setItem("checkout_payload", JSON.stringify(checkout));
@@ -124,9 +100,12 @@
     }
   }
 
-  function selectPickupPoint(point, silent) {
+  function setSelectedPoint(point, silent) {
     if (!map || !window.ymaps || !point?.coords) return;
-    selectedPickupPoint = point;
+    selectedPoint = {
+      ...point,
+      id: point.id || String(point.address || point.city || "").trim(),
+    };
     if (!selectedMarker) {
       selectedMarker = new window.ymaps.Placemark(point.coords, {}, { preset: "islands#redDotIcon" });
       map.geoObjects.add(selectedMarker);
@@ -137,95 +116,12 @@
     if (lineInput) lineInput.value = point.address || "";
     if (cityInput && point.city) cityInput.value = point.city;
     if (!silent) {
-      setStatus("Выбран пункт выдачи Почты России. Нажмите 'Сохранить'.", false);
+      setStatus("Адрес выбран. Нажмите 'Сохранить' для сохранения.", false);
     }
-  }
-
-  async function renderPostOfficesForCity(city, cityCoords) {
-    if (!map || !window.ymaps) return;
-    if (skipDeliveryInput?.checked) {
-      setStatus("Доставка отключена — выберите «Без доставки» и сохраните.", false);
-      return;
-    }
-    if (!postOfficeCollection) {
-      postOfficeCollection = new window.ymaps.GeoObjectCollection();
-      map.geoObjects.add(postOfficeCollection);
-    }
-    postOfficeCollection.removeAll();
-    selectedPickupPoint = null;
-    if (lineInput) lineInput.value = "";
-
-    const query = new URLSearchParams({ city });
-    if (Array.isArray(cityCoords) && cityCoords.length === 2) {
-      query.set("lat", String(cityCoords[0]));
-      query.set("lng", String(cityCoords[1]));
-    }
-    const data = await API.request(`/delivery/russian-post/offices?${query.toString()}`);
-    const offices = data.offices || [];
-    const points = [];
-
-    async function resolveCoords(office) {
-      const lat = Number(office.lat);
-      const lng = Number(office.lng);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
-      const queryText = [office.address || office.label, office.city || city, "Почта России"]
-        .filter(Boolean)
-        .join(", ");
-      try {
-        const geo = await geocode(queryText, { results: 1 });
-        const object = geo.geoObjects.get(0);
-        const coords = object?.geometry?.getCoordinates?.();
-        return Array.isArray(coords) ? coords : null;
-      } catch {
-        return null;
-      }
-    }
-
-    for (const office of offices.slice(0, 40)) {
-      const coords = await resolveCoords(office);
-      if (!coords) continue;
-      const point = {
-        coords,
-        city: office.city || city,
-        address: office.address || office.label,
-        postalCode: office.postalCode,
-      };
-      const marker = new window.ymaps.Placemark(
-        coords,
-        {
-          balloonContentHeader: "Почта России",
-          balloonContentBody: point.address,
-          hintContent: office.postalCode || point.address,
-        },
-        { preset: "islands#blueIcon" }
-      );
-      marker.events.add("click", () => selectPickupPoint(point, false));
-      postOfficeCollection.add(marker);
-      points.push(point);
-    }
-
-    if (points.length === 0) {
-      if (!offices.length) {
-        setStatus(
-          "Почта России не вернула ОПС. Проверьте POCHTA_OTPRAVKA_TOKEN и POCHTA_OTPRAVKA_USER_AUTH на сервере (Render → Environment).",
-          true
-        );
-      } else {
-        setStatus(
-          "ОПС найдены, но без координат на карте. Попробуйте уточнить город или повторить поиск позже.",
-          true
-        );
-      }
-      return;
-    }
-
-    points.sort((a, b) => distanceScore(a.coords, cityCoords) - distanceScore(b.coords, cityCoords));
-    selectPickupPoint(points[0], true);
-    setStatus(`Найдено пунктов выдачи: ${points.length}. Ближайший выбран автоматически.`, false);
   }
 
   async function resolveCityCoordinates(city) {
-    const query = `Россия, ${city}`;
+    const query = `${city}, Россия`;
     if (window.ymaps) {
       try {
         const cityResult = await geocode(query, { results: 1, kind: "locality" });
@@ -243,6 +139,39 @@
     return null;
   }
 
+  function parseAddressParts(geoObject, fallbackCity) {
+    const text = geoObject?.properties?.get("text") || geoObject?.properties?.get("name") || "";
+    const line = typeof geoObject?.getAddressLine === "function" ? geoObject.getAddressLine() : text;
+    const meta = geoObject?.properties?.get("metaDataProperty.GeocoderMetaData") || {};
+    const parts = meta?.Address?.Components;
+    let city = fallbackCity || "";
+    if (Array.isArray(parts)) {
+      const cityPart = parts.find((item) => item.kind === "locality" || item.kind === "province");
+      city = cityPart?.name || city;
+    }
+    return { line, city };
+  }
+
+  async function geocodeAddress(address, city) {
+    const queryItems = [];
+    if (address) queryItems.push(address);
+    if (city) queryItems.push(city);
+    queryItems.push("Россия");
+    const query = queryItems.filter(Boolean).join(", ");
+    const result = await geocode(query, { results: 1 });
+    const object = result.geoObjects.get(0);
+    const coords = object?.geometry?.getCoordinates?.();
+    if (!Array.isArray(coords) || coords.length !== 2) {
+      throw new Error("Адрес не найден.");
+    }
+    const parsed = parseAddressParts(object, city);
+    return {
+      coords,
+      address: parsed.line,
+      city: parsed.city || city || "",
+    };
+  }
+
   async function searchByCity() {
     const city = String(cityInput?.value || "").trim();
     if (!city) {
@@ -254,25 +183,42 @@
       return;
     }
 
-    setStatus("Определяем город и ищем ОПС Почты России...", false);
+    setStatus("Ищем город...", false);
     let cityCoords = null;
-
     try {
       cityCoords = await resolveCityCoordinates(city);
     } catch (error) {
-      setStatus(`Не удалось найти город: ${extractYandexErrorMessage(error)}.`, true);
+      setStatus(`Не удалось найти город: ${extractYandexErrorMessage(error)}`, true);
       return;
     }
     if (!cityCoords) {
-      setStatus("Город не найден. Введите название как в почтовом адресе, например: Казань или Владивосток.", true);
+      setStatus("Город не найден. Попробуйте другое название.", true);
       return;
     }
 
     map.setCenter(cityCoords, 11, { duration: 250 });
+    setStatus("Город найден. Введите адрес и нажмите «Найти адрес».", false);
+  }
+
+  async function searchByAddress() {
+    const address = String(lineInput?.value || "").trim();
+    const city = String(cityInput?.value || "").trim();
+    if (!address) {
+      setStatus("Введите адрес для поиска.", true);
+      return;
+    }
+    if (!map || !window.ymaps) {
+      setStatus("Карта еще не готова.", true);
+      return;
+    }
+
+    setStatus("Ищем адрес на карте...", false);
     try {
-      await renderPostOfficesForCity(city, cityCoords);
+      const result = await geocodeAddress(address, city);
+      setSelectedPoint(result, false);
+      setStatus("Адрес найден. Нажмите 'Сохранить' для сохранения.", false);
     } catch (error) {
-      setStatus(`Не удалось получить пункты Почты России: ${extractYandexErrorMessage(error)}.`, true);
+      setStatus(extractYandexErrorMessage(error), true);
     }
   }
 
@@ -292,7 +238,7 @@
       });
       clearMapMessage();
       map.events.add("click", () => {
-        setStatus("Выберите отделение только по синей точке Почты России.", true);
+        setStatus("Введите адрес и нажмите «Найти адрес», либо выберите сохраненный адрес.", false);
       });
       searchByCity().catch((error) => setStatus(extractYandexErrorMessage(error), true));
     });
@@ -337,8 +283,9 @@
             coords: coords || [55.751244, 37.618423],
             city: selected.city || String(cityInput?.value || "").trim(),
             address: selected.addressLine || "",
+            id: selected.id,
           };
-          selectPickupPoint(point, true);
+          setSelectedPoint(point, true);
           setStatus("Сохраненный адрес выбран.", false);
           await loadAddresses();
         } catch (error) {
@@ -364,10 +311,14 @@
     });
   }
 
-  searchBtn?.addEventListener("click", () => {
+  citySearchBtn?.addEventListener("click", () => {
     searchByCity().catch((error) => {
       setStatus(extractYandexErrorMessage(error), true);
     });
+  });
+
+  addressSearchBtn?.addEventListener("click", () => {
+    searchByAddress().catch((error) => setStatus(extractYandexErrorMessage(error), true));
   });
 
   cityInput?.addEventListener("keydown", (event) => {
@@ -376,62 +327,39 @@
     searchByCity().catch((error) => setStatus(extractYandexErrorMessage(error), true));
   });
 
+  lineInput?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    searchByAddress().catch((error) => setStatus(extractYandexErrorMessage(error), true));
+  });
+
   saveBtn?.addEventListener("click", async () => {
-    if (skipDeliveryInput?.checked) {
-      persistDeliverySelection({ deliveryPrice: 0 });
-      setStatus("Доставка отключена. Можно перейти к оплате.", false);
-      return;
-    }
-    if (!selectedPickupPoint?.address || !selectedPickupPoint?.postalCode) {
-      setStatus("Сначала выберите пункт выдачи Почты России на карте.", true);
+    if (!selectedPoint?.address || !Array.isArray(selectedPoint.coords)) {
+      setStatus("Сначала найдите и выберите адрес на карте.", true);
       return;
     }
     setStatus("Сохранение...", false);
     try {
-      let deliveryPrice = 0;
-      try {
-        const checkout = JSON.parse(sessionStorage.getItem("checkout_payload") || "{}");
-        const tariff = await API.request("/delivery/russian-post/calculate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            indexTo: selectedPickupPoint.postalCode,
-            modelVolumeCm3: checkout.modelVolumeCm3,
-            material: checkout.material,
-            qty: checkout.qty,
-          }),
-        });
-        deliveryPrice = Number(tariff.deliveryPrice || 0);
-      } catch (error) {
-        console.warn("tariff", error);
-      }
       await API.request("/profile/addresses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          label: "Пункт выдачи Почты России",
-          city: selectedPickupPoint.city || String(cityInput?.value || "").trim(),
-          addressLine: selectedPickupPoint.address,
-          lat: selectedPickupPoint.coords?.[0] ?? null,
-          lng: selectedPickupPoint.coords?.[1] ?? null,
-          postalCode: selectedPickupPoint.postalCode,
-          officeCode: selectedPickupPoint.postalCode,
-          deliveryType: "russian_post",
+          label: "Адрес доставки",
+          city: selectedPoint.city || String(cityInput?.value || "").trim(),
+          addressLine: selectedPoint.address,
+          lat: selectedPoint.coords?.[0] ?? null,
+          lng: selectedPoint.coords?.[1] ?? null,
+          postalCode: null,
+          officeCode: null,
+          deliveryType: "manual",
           isDefault: true,
         }),
       });
-      persistDeliverySelection({ deliveryPrice });
-      setStatus(`Адрес сохранён. Доставка: ${deliveryPrice} ₽`, false);
+      persistDeliverySelection({ deliveryPrice: 0 });
+      setStatus("Адрес сохранён. Можно перейти к оплате.", false);
       await loadAddresses();
     } catch (error) {
       setStatus(error.message, true);
-    }
-  });
-
-  skipDeliveryInput?.addEventListener("change", () => {
-    if (skipDeliveryInput.checked) {
-      persistDeliverySelection({ deliveryPrice: 0 });
-      setStatus("Доставка не будет добавлена к заказу.", false);
     }
   });
 

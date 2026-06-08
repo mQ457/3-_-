@@ -3,6 +3,8 @@
   "private": true,
   "description": "3D print service — frontend + Express backend",
   "scripts": {
+    "build": "npm install --prefix server --omit=dev",
+    "prestart": "npm install --prefix server --omit=dev",
     "start": "npm --prefix server start",
     "dev": "npm --prefix server run dev",
     "setup": "npm install --prefix server"

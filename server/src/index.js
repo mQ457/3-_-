@@ -37,20 +37,30 @@ if (isProduction) {
   app.set("trust proxy", 1);
 }
 
-app.use(
+app.use((req, res, next) => {
   cors({
-    origin: (origin, callback) => {
+    origin(origin, callback) {
       if (!origin || allowedOrigins.length === 0) {
         return callback(null, true);
       }
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+      // Фронт и API на одном домене — не блокируем same-origin запросы.
+      try {
+        const originHost = new URL(origin).host;
+        const requestHost = String(req.headers.host || "");
+        if (originHost && requestHost && originHost === requestHost) {
+          return callback(null, true);
+        }
+      } catch (_error) {
+        // noop
+      }
       return callback(new Error("CORS_ORIGIN does not allow this origin"));
     },
     credentials: true,
-  })
-);
+  })(req, res, next);
+});
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 

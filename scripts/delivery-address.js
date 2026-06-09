@@ -205,24 +205,109 @@
     return { line, city };
   }
 
-  async function geocodeAddress(address, city) {
-    const queryItems = [];
-    if (address) queryItems.push(address);
-    if (city) queryItems.push(city);
-    queryItems.push("Россия");
-    const query = queryItems.filter(Boolean).join(", ");
-    const result = await geocode(query, { results: 1 });
-    const object = result.geoObjects.get(0);
-    const coords = object?.geometry?.getCoordinates?.();
-    if (!Array.isArray(coords) || coords.length !== 2) {
-      throw new Error("Адрес не найден.");
+  function normalizeAddressText(value) {
+    return String(value || "")
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/[.,;]+/g, " ")
+      .trim();
+  }
+
+  function buildAddressQueries(address, city) {
+    const queries = [];
+    const seen = new Set();
+    const baseAddress = normalizeAddressText(address);
+    const normalizedCity = normalizeAddressText(city);
+
+    const variants = [];
+    if (baseAddress) {
+      variants.push(baseAddress);
+      variants.push(baseAddress.replace(/^(ул\.?|улица|пр\.?|проспект|пр-кт|пер\.?|переулок|б-р|бульвар|наб\.?|набережная|ш\.?|шоссе)\s+/i, ""));
+      variants.push(baseAddress.replace(/(\D)\s+(\d)/, "$1, $2"));
+      variants.push(baseAddress.replace(/(\d)\s+([а-я])/i, "$1, $2"));
+      const tokens = baseAddress.split(" ").filter(Boolean);
+      const lastToken = tokens[tokens.length - 1];
+      if (tokens.length > 1 && /\d/.test(lastToken)) {
+        const street = tokens.slice(0, -1).join(" ");
+        if (street) {
+          variants.push(`${street}, ${lastToken}`);
+          variants.push(`${street} ${lastToken}`);
+        }
+      }
     }
-    const parsed = parseAddressParts(object, city);
-    return {
-      coords,
-      address: parsed.line,
-      city: parsed.city || city || "",
-    };
+
+    const addressVariants = [...new Set(variants.filter(Boolean))];
+    addressVariants.forEach((variant) => {
+      const forms = [variant, `${variant}, Россия`, `Россия, ${variant}`];
+      if (normalizedCity) {
+        forms.push(`${variant}, ${normalizedCity}`);
+        forms.push(`${normalizedCity}, ${variant}`);
+        forms.push(`Россия, ${normalizedCity}, ${variant}`);
+      }
+      forms.forEach((query) => {
+        const cleanedQuery = normalizeAddressText(query);
+        if (cleanedQuery && !seen.has(cleanedQuery.toLowerCase())) {
+          seen.add(cleanedQuery.toLowerCase());
+          queries.push(cleanedQuery);
+        }
+      });
+    });
+
+    if (!queries.length && baseAddress) {
+      queries.push(baseAddress);
+    }
+    return queries;
+  }
+
+  async function geocodeAddress(address, city) {
+    const queries = buildAddressQueries(address, city);
+    let lastError = null;
+
+    for (const query of queries) {
+      try {
+        const result = await geocode(query, { results: 5 });
+        const geoObjects = result?.geoObjects;
+        const total = typeof geoObjects?.getLength === "function" ? geoObjects.getLength() : 0;
+
+        let bestMatch = null;
+        let bestScore = -Infinity;
+
+        for (let index = 0; index < total; index += 1) {
+          const object = typeof geoObjects.get === "function" ? geoObjects.get(index) : null;
+          const coords = object?.geometry?.getCoordinates?.();
+          if (!Array.isArray(coords) || coords.length !== 2) continue;
+
+          const parsed = parseAddressParts(object, city);
+          const normalizedLine = normalizeAddressText(parsed.line || "");
+          const normalizedAddress = normalizeAddressText(address);
+          const normalizedCity = normalizeAddressText(city);
+          const normalizedParsedCity = normalizeAddressText(parsed.city || "");
+          const addressTokens = normalizedAddress.split(" ").filter(Boolean);
+          let score = 0;
+
+          if (normalizedLine.includes(normalizedAddress)) score += 25;
+          if (addressTokens.some((token) => normalizedLine.includes(token))) score += 8;
+          if (normalizedCity && normalizedParsedCity.includes(normalizedCity)) score += 10;
+          if (object?.properties?.get("metaDataProperty.GeocoderMetaData")?.kind === "house") score += 15;
+          if (score > bestScore) {
+            bestScore = score;
+            bestMatch = {
+              coords,
+              address: parsed.line || normalizedAddress,
+              city: parsed.city || normalizedCity || "",
+            };
+          }
+        }
+
+        if (bestMatch) {
+          return bestMatch;
+        }
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error("Адрес не найден.");
   }
 
   async function selectPointByCoords(coords, options = {}) {

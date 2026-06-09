@@ -61,8 +61,11 @@
     return "Ошибка геокодирования";
   }
 
-  function geocode(query, options) {
-    return window.ymaps.geocode(query, options).then(
+  function geocode(query, options = {}) {
+    const requestOptions = {
+      ...options,
+    };
+    return window.ymaps.geocode(query, requestOptions).then(
       (result) => result,
       (error) => {
         throw error instanceof Error ? error : new Error(extractYandexErrorMessage(error));
@@ -74,6 +77,17 @@
     const lat = Number(item?.lat);
     const lng = Number(item?.lng);
     return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+  }
+
+  function normalizePoint(point) {
+    const coords = Array.isArray(point?.coords) ? point.coords : parseCoords(point);
+    if (!Array.isArray(coords) || coords.length !== 2) return null;
+    const normalizedCoords = [Number(coords[0]), Number(coords[1])];
+    if (!Number.isFinite(normalizedCoords[0]) || !Number.isFinite(normalizedCoords[1])) return null;
+    return {
+      ...point,
+      coords: normalizedCoords,
+    };
   }
 
   function persistDeliverySelection(extra) {
@@ -101,23 +115,61 @@
     }
   }
 
-  function setSelectedPoint(point, silent) {
-    if (!map || !window.ymaps || !point?.coords) return;
+  function setSelectedPoint(point, options = {}) {
+    const normalizedPoint = normalizePoint(point);
+    if (!map || !window.ymaps || !normalizedPoint?.coords) return;
     selectedPoint = {
-      ...point,
-      id: point.id || String(point.address || point.city || "").trim(),
+      ...normalizedPoint,
+      id: normalizedPoint.id || String(normalizedPoint.address || normalizedPoint.city || "").trim(),
     };
     if (!selectedMarker) {
-      selectedMarker = new window.ymaps.Placemark(point.coords, {}, { preset: "islands#redDotIcon" });
+      selectedMarker = new window.ymaps.Placemark(normalizedPoint.coords, {}, { preset: "islands#redDotIcon" });
       map.geoObjects.add(selectedMarker);
     } else {
-      selectedMarker.geometry.setCoordinates(point.coords);
+      selectedMarker.geometry.setCoordinates(normalizedPoint.coords);
     }
-    map.setCenter(point.coords, 15, { duration: 250 });
-    if (lineInput) lineInput.value = point.address || "";
-    if (cityInput && point.city) cityInput.value = point.city;
-    if (!silent) {
+    map.setCenter(normalizedPoint.coords, 15, { duration: 250 });
+    if (lineInput && normalizedPoint.address) lineInput.value = normalizedPoint.address;
+    if (cityInput && normalizedPoint.city) cityInput.value = normalizedPoint.city;
+    if (options.persist !== false) {
+      persistDeliverySelection({ deliveryPrice: 0 });
+    }
+    if (!options.silent) {
       setStatus("Адрес выбран. Нажмите 'Сохранить' для сохранения.", false);
+    }
+  }
+
+  async function reverseGeocodePoint(coords, fallbackCity) {
+    if (!window.ymaps) {
+      return {
+        coords,
+        address: "Точка на карте",
+        city: fallbackCity || "",
+      };
+    }
+
+    try {
+      const result = await geocode(coords, { results: 1 });
+      const object = result.geoObjects.get(0);
+      if (!object) {
+        return {
+          coords,
+          address: "Точка на карте",
+          city: fallbackCity || "",
+        };
+      }
+      const parsed = parseAddressParts(object, fallbackCity || "");
+      return {
+        coords,
+        address: parsed.line || "Точка на карте",
+        city: parsed.city || fallbackCity || "",
+      };
+    } catch {
+      return {
+        coords,
+        address: "Точка на карте",
+        city: fallbackCity || "",
+      };
     }
   }
 
@@ -173,6 +225,15 @@
     };
   }
 
+  async function selectPointByCoords(coords, options = {}) {
+    const normalizedPoint = normalizePoint({ coords });
+    if (!normalizedPoint?.coords) return;
+
+    const fallbackCity = String(cityInput?.value || "").trim();
+    const point = await reverseGeocodePoint(normalizedPoint.coords, fallbackCity);
+    setSelectedPoint(point, options);
+  }
+
   async function searchByCity() {
     const city = String(cityInput?.value || "").trim();
     if (!city) {
@@ -216,7 +277,7 @@
     setStatus("Ищем адрес на карте...", false);
     try {
       const result = await geocodeAddress(address, city);
-      setSelectedPoint(result, false);
+      setSelectedPoint(result, { silent: false });
       setStatus("Адрес найден. Нажмите 'Сохранить' для сохранения.", false);
     } catch (error) {
       setStatus(extractYandexErrorMessage(error), true);
@@ -238,8 +299,11 @@
         controls: ["zoomControl", "geolocationControl"],
       });
       clearMapMessage();
-      map.events.add("click", () => {
-        setStatus("Выберите адрес на карте или введите его вручную в поле выше.", false);
+      map.events.add("click", (event) => {
+        const coords = event.get("coords");
+        selectPointByCoords(coords, { silent: false }).catch(() => {
+          setSelectedPoint({ coords, address: "Точка на карте", city: String(cityInput?.value || "").trim() }, { silent: false });
+        });
       });
       searchByCity().catch((error) => setStatus(extractYandexErrorMessage(error), true));
     });
@@ -286,7 +350,7 @@
             address: selected.addressLine || "",
             id: selected.id,
           };
-          setSelectedPoint(point, true);
+          setSelectedPoint(point, { silent: true });
           setStatus("Сохраненный адрес выбран.", false);
           await loadAddresses();
         } catch (error) {
@@ -327,6 +391,12 @@
   lineInput?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
+    searchByAddress().catch((error) => setStatus(extractYandexErrorMessage(error), true));
+  });
+
+  lineInput?.addEventListener("blur", () => {
+    const value = String(lineInput.value || "").trim();
+    if (!value) return;
     searchByAddress().catch((error) => setStatus(extractYandexErrorMessage(error), true));
   });
 
@@ -379,7 +449,8 @@
     .then(async () => {
       API.wireLogout();
       const config = await API.request("/delivery/config");
-      await loadYandexMaps(config.yandexMapsApiKey || "");
+      const geocoderKey = (config?.yandexMapsApiKey || "").trim();
+      await loadYandexMaps(geocoderKey);
       initMap();
       loadAddresses().catch((error) => setStatus(error.message, true));
     })

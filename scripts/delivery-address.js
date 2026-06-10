@@ -10,6 +10,7 @@
   const DELIVERY_SELECTION_KEY = "delivery_selection";
 
   let map = null;
+  let mapKind = "";
   let selectedMarker = null;
   let selectedPoint = null;
 
@@ -118,20 +119,46 @@
     }
   }
 
+  function centerMap(coords, zoom = 15) {
+    if (!map || !Array.isArray(coords)) return;
+    if (mapKind === "leaflet") {
+      map.setView(coords, zoom);
+      return;
+    }
+    if (mapKind === "yandex") {
+      map.setCenter(coords, zoom, { duration: 250 });
+    }
+  }
+
+  function placeMarker(coords) {
+    if (!map || !Array.isArray(coords)) return;
+    if (mapKind === "leaflet" && window.L) {
+      if (!selectedMarker) {
+        selectedMarker = window.L.marker(coords).addTo(map);
+      } else {
+        selectedMarker.setLatLng(coords);
+      }
+      return;
+    }
+    if (mapKind === "yandex" && window.ymaps) {
+      if (!selectedMarker) {
+        selectedMarker = new window.ymaps.Placemark(coords, {}, { preset: "islands#redDotIcon" });
+        map.geoObjects.add(selectedMarker);
+      } else {
+        selectedMarker.geometry.setCoordinates(coords);
+      }
+    }
+  }
+
   function setSelectedPoint(point, options = {}) {
     const normalizedPoint = normalizePoint(point);
-    if (!map || !window.ymaps || !normalizedPoint?.coords) return;
+    if (!map || !normalizedPoint?.coords) return;
     selectedPoint = {
       ...normalizedPoint,
       id: normalizedPoint.id || String(normalizedPoint.address || normalizedPoint.city || "").trim(),
     };
-    if (!selectedMarker) {
-      selectedMarker = new window.ymaps.Placemark(normalizedPoint.coords, {}, { preset: "islands#redDotIcon" });
-      map.geoObjects.add(selectedMarker);
-    } else {
-      selectedMarker.geometry.setCoordinates(normalizedPoint.coords);
-    }
-    map.setCenter(normalizedPoint.coords, 15, { duration: 250 });
+    placeMarker(normalizedPoint.coords);
+    centerMap(normalizedPoint.coords, 15);
     if (lineInput && normalizedPoint.address) lineInput.value = normalizedPoint.address;
     if (cityInput && normalizedPoint.city) cityInput.value = normalizedPoint.city;
     if (options.persist !== false) {
@@ -192,20 +219,22 @@
   }
 
   async function resolveCityCoordinates(city) {
-    const query = `${city}, Россия`;
-    if (window.ymaps) {
-      try {
-        const cityResult = await geocode(query, { results: 1, kind: "locality" });
-        const cityObject = cityResult.geoObjects.get(0);
-        const coords = cityObject?.geometry?.getCoordinates?.();
-        if (Array.isArray(coords) && coords.length === 2) return coords;
-      } catch (error) {
-        console.warn("ymaps city geocode", error);
+    try {
+      const data = await API.request(`/delivery/geocode-city?city=${encodeURIComponent(city)}`);
+      if (Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
+        return [Number(data.lat), Number(data.lng)];
       }
+    } catch (error) {
+      console.warn("server city geocode", error);
     }
-    const data = await API.request(`/delivery/geocode-city?city=${encodeURIComponent(city)}`);
-    if (Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
-      return [Number(data.lat), Number(data.lng)];
+    if (!window.ymaps) return null;
+    try {
+      const cityResult = await geocode(`${city}, Россия`, { results: 1, kind: "locality" });
+      const cityObject = cityResult.geoObjects.get(0);
+      const coords = cityObject?.geometry?.getCoordinates?.();
+      if (Array.isArray(coords) && coords.length === 2) return coords;
+    } catch (error) {
+      console.warn("ymaps city geocode", error);
     }
     return null;
   }
@@ -362,18 +391,7 @@
   }
 
   async function geocodeAddress(address, city) {
-    try {
-      return await geocodeAddressViaServer(address, city);
-    } catch (serverError) {
-      if (!window.ymaps) {
-        throw serverError;
-      }
-      try {
-        return await geocodeAddressViaYmaps(address, city);
-      } catch (ymapsError) {
-        throw serverError.status ? serverError : ymapsError;
-      }
-    }
+    return geocodeAddressViaServer(address, city);
   }
 
   async function selectPointByCoords(coords, options = {}) {
@@ -391,7 +409,7 @@
       setStatus("Введите город.", true);
       return;
     }
-    if (!map || !window.ymaps) {
+    if (!map) {
       setStatus("Карта еще не готова.", true);
       return;
     }
@@ -409,7 +427,7 @@
       return;
     }
 
-    map.setCenter(cityCoords, 11, { duration: 250 });
+    centerMap(cityCoords, 11);
     setStatus("Город найден. Введите адрес и нажмите Enter.", false);
   }
 
@@ -424,7 +442,7 @@
       setStatus("Введите адрес для поиска.", true);
       return;
     }
-    if (!map || !window.ymaps) {
+    if (!map) {
       setStatus("Карта еще не готова.", true);
       return;
     }
@@ -439,29 +457,106 @@
     }
   }
 
-  function initMap() {
-    if (!mapContainer) return;
-    if (!window.ymaps || typeof window.ymaps.ready !== "function") {
-      setMapMessage("Не удалось загрузить Яндекс.Карты.");
-      setStatus("Сервис карты временно недоступен.", true);
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Не удалось загрузить ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadLeafletAssets() {
+    if (!document.querySelector("link[data-leaflet-css]")) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      link.dataset.leafletCss = "1";
+      document.head.appendChild(link);
+    }
+    if (!window.L) {
+      await loadScriptOnce("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
+    }
+  }
+
+  function bindMapClick(handler) {
+    if (mapKind === "leaflet") {
+      map.on("click", (event) => handler([event.latlng.lat, event.latlng.lng]));
       return;
     }
+    if (mapKind === "yandex") {
+      map.events.add("click", (event) => handler(event.get("coords")));
+    }
+  }
 
-    window.ymaps.ready(() => {
-      map = new window.ymaps.Map("delivery-map", {
-        center: [55.751244, 37.618423],
-        zoom: 10,
-        controls: ["zoomControl", "geolocationControl"],
+  async function initLeafletMap() {
+    await loadLeafletAssets();
+    mapContainer.innerHTML = "";
+    map = window.L.map(mapContainer).setView([55.751244, 37.618423], 10);
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap",
+      maxZoom: 19,
+    }).addTo(map);
+    mapKind = "leaflet";
+    selectedMarker = null;
+    clearMapMessage();
+    bindMapClick((coords) => {
+      selectPointByCoords(coords, { silent: false }).catch(() => {
+        setSelectedPoint({ coords, address: "Точка на карте", city: String(cityInput?.value || "").trim() }, { silent: false });
       });
-      clearMapMessage();
-      map.events.add("click", (event) => {
-        const coords = event.get("coords");
-        selectPointByCoords(coords, { silent: false }).catch(() => {
-          setSelectedPoint({ coords, address: "Точка на карте", city: String(cityInput?.value || "").trim() }, { silent: false });
-        });
-      });
-      searchByCity().catch((error) => setStatus(extractYandexErrorMessage(error), true));
     });
+  }
+
+  function initYandexMap() {
+    return new Promise((resolve, reject) => {
+      if (!window.ymaps || typeof window.ymaps.ready !== "function") {
+        reject(new Error("Yandex Maps API недоступен"));
+        return;
+      }
+      window.ymaps.ready(() => {
+        try {
+          clearMapMessage();
+          map = new window.ymaps.Map("delivery-map", {
+            center: [55.751244, 37.618423],
+            zoom: 10,
+            controls: ["zoomControl", "geolocationControl"],
+          });
+          mapKind = "yandex";
+          selectedMarker = null;
+          clearMapMessage();
+          bindMapClick((coords) => {
+            selectPointByCoords(coords, { silent: false }).catch(() => {
+              setSelectedPoint({ coords, address: "Точка на карте", city: String(cityInput?.value || "").trim() }, { silent: false });
+            });
+          });
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  }
+
+  async function initMap() {
+    if (!mapContainer) return;
+    try {
+      await initYandexMap();
+      return;
+    } catch (yandexError) {
+      console.warn("Yandex map init failed", yandexError);
+    }
+    try {
+      await initLeafletMap();
+    } catch (leafletError) {
+      setMapMessage("Не удалось загрузить карту.");
+      setStatus("Сервис карты временно недоступен.", true);
+      throw leafletError;
+    }
   }
 
   async function loadAddresses() {
@@ -605,8 +700,13 @@
       API.wireLogout();
       const config = await API.request("/delivery/config");
       const geocoderKey = (config?.yandexMapsApiKey || "").trim();
-      await loadYandexMaps(geocoderKey);
-      initMap();
+      try {
+        await loadYandexMaps(geocoderKey);
+      } catch (error) {
+        console.warn("Yandex Maps script load failed", error);
+      }
+      await initMap();
+      await searchByCity().catch((error) => setStatus(extractYandexErrorMessage(error), true));
       loadAddresses().catch((error) => setStatus(error.message, true));
     })
     .catch((error) => {

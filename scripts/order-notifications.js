@@ -88,9 +88,7 @@
       sessionStorage.removeItem("app.toast");
       const parsed = JSON.parse(raw);
       showToast(parsed.title, parsed.message);
-    } catch (_error) {
-      // noop
-    }
+    } catch (_error) {}
   }
 
   async function loadUnread() {

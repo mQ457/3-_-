@@ -80,7 +80,7 @@
         const coords = result?.geoObjects?.get(0)?.geometry?.getCoordinates?.();
         if (Array.isArray(coords) && coords.length === 2) return coords;
       } catch {
-        // fallback below
+
       }
     }
     const data = await API.request(`/delivery/geocode-city?city=${encodeURIComponent(city)}`);

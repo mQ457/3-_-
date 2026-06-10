@@ -179,7 +179,6 @@
   }
 
   function wireCabinetLink() {
-    // Ссылка работает через href в HTML, JS-перехват не нужен.
     if (!cabinetLink) return;
   }
 

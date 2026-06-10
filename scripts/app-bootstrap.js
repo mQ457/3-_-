@@ -70,7 +70,7 @@
     try {
       sessionStorage.removeItem(USER_CACHE_KEY);
     } catch (_error) {
-      // noop
+
     }
   }
 
@@ -87,7 +87,7 @@
         })
       );
     } catch (_error) {
-      // noop
+
     }
     return normalized;
   }
@@ -100,7 +100,7 @@
         try {
           sessionStorage.removeItem(LOGOUT_FLAG_KEY);
         } catch (_error) {
-          // noop
+
         }
         return cached.user;
       }
@@ -109,7 +109,7 @@
       try {
         sessionStorage.removeItem(LOGOUT_FLAG_KEY);
       } catch (_error) {
-        // noop
+
       }
       return user;
     } catch (error) {
@@ -143,7 +143,7 @@
         return;
       }
     } catch (_error) {
-      // noop
+
     }
     try {
       await request("/auth/me", { method: "GET", cache: "no-store" });
@@ -158,14 +158,14 @@
     try {
       await request("/auth/logout", { method: "POST" });
     } catch (_error) {
-      // noop
+
     } finally {
       window.__APP_USER__ = null;
       clearUserCache();
       try {
         sessionStorage.setItem(LOGOUT_FLAG_KEY, "1");
       } catch (_storageError) {
-        // noop
+
       }
       redirectToLogin();
     }

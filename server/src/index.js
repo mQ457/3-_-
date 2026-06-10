@@ -27,9 +27,9 @@ const allowedOrigins = String(process.env.CORS_ORIGIN || "")
   .filter(Boolean);
 
 if (!isProduction) {
-  // eslint-disable-next-line no-console
+
   console.log("webRoot:", webRoot);
-  // eslint-disable-next-line no-console
+
   console.log("landing exists:", fs.existsSync(landingPagePath));
 }
 
@@ -46,7 +46,7 @@ app.use((req, res, next) => {
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      // Фронт и API на одном домене — не блокируем same-origin запросы.
+
       try {
         const originHost = new URL(origin).host;
         const requestHost = String(req.headers.host || "");
@@ -54,7 +54,7 @@ app.use((req, res, next) => {
           return callback(null, true);
         }
       } catch (_error) {
-        // noop
+
       }
       return callback(new Error("CORS_ORIGIN does not allow this origin"));
     },
@@ -98,7 +98,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// Resolve pretty URLs like /profile -> /profile.html when file exists.
+
 app.get(/^\/(?!api(?:\/|$)).*/, (req, res) => {
   const normalizedPath = decodeURIComponent(String(req.path || "/")).replace(/\\/g, "/");
   const safePath = normalizedPath.replace(/^\/+/, "");
@@ -124,7 +124,7 @@ app.use((err, _req, res, _next) => {
   if (err?.code === "LIMIT_FILE_SIZE") {
     return res.status(400).json({ error: "VALIDATION_ERROR", message: "Размер файла не должен превышать 100 МБ." });
   }
-  // eslint-disable-next-line no-console
+
   console.error(err.stack || err);
   return res.status(500).json({
     error: "INTERNAL_ERROR",
@@ -132,24 +132,24 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-// eslint-disable-next-line no-console
+
 console.log(`Binding HTTP server on ${host}:${port}`);
 
 const server = app.listen(port, host, () => {
   const dbLabel = db.dbMode === "postgres" ? "PostgreSQL" : "in-memory (pg-mem)";
   const aiProvider = String(process.env.AI_PROVIDER || "auto").trim() || "auto";
-  // eslint-disable-next-line no-console
+
   console.log(`Site started at http://${host}:${port}`);
-  // eslint-disable-next-line no-console
+
   console.log(`Environment: ${isProduction ? "production" : "development"} | Database: ${dbLabel} | AI: ${aiProvider}`);
 
   if (!process.env.DATABASE_URL && isProduction) {
-    // eslint-disable-next-line no-console
+
     console.warn("WARNING: DATABASE_URL is not set. Data will not persist between restarts on Render.");
   }
 
   if (shouldAutoOpenBrowser) {
-    // автоматически открываем сайт только при локальном запуске
+
     const openUrl = (url) => {
       const { exec } = require("child_process");
       const platform = process.platform;
@@ -194,7 +194,7 @@ wsServer.on("connection", (socket) => {
 });
 
 function shutdown(signal) {
-  // eslint-disable-next-line no-console
+
   console.log(`${signal} received. Shutting down gracefully...`);
   wsServer.close(() => {
     server.close(() => {
@@ -207,8 +207,7 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 if (!isProduction) {
-  // In some Windows/PowerShell setups the process may terminate right after start.
-  // Keep an explicit referenced timer so the server stays alive in local development.
+
   const keepAliveTimer = setInterval(() => {}, 60 * 60 * 1000);
   if (typeof keepAliveTimer.ref === "function") {
     keepAliveTimer.ref();

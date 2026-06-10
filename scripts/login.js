@@ -104,7 +104,7 @@
   }
 
   function sanitizeRedirect(value) {
-    const normalized = String(value || "").trim().toLowerCase().replace(/^\//, "");
+    const normalized = String(value || "").trim().toLowerCase().replace(/^\
     if (!ALLOWED_REDIRECTS.has(normalized)) return "";
     return normalized;
   }
@@ -196,7 +196,7 @@
       try {
         sessionStorage.removeItem(LOGOUT_FLAG_KEY);
       } catch (_error) {
-        // noop
+
       }
       setStatus("Успешный вход. Переходим...", false, "login");
       setTimeout(() => {
@@ -221,7 +221,7 @@
       try {
         sessionStorage.removeItem(LOGOUT_FLAG_KEY);
       } catch (_error) {
-        // noop
+
       }
       setStatus("Аккаунт создан. Переходим дальше...", false, "register");
       setTimeout(() => {

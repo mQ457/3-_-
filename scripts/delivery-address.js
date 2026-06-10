@@ -44,7 +44,10 @@
 
   function extractYandexErrorMessage(error) {
     if (!error) return "Ошибка геокодирования";
-    if (typeof error === "string") return error;
+    if (typeof error === "string") {
+      if (error === "scriptError") return "Не удалось найти адрес. Проверьте город и формат улицы с домом.";
+      return error;
+    }
     if (typeof error.message === "string" && error.message.trim()) return error.message;
     if (typeof error.error === "string" && error.error.trim()) return error.error;
     if (typeof error.reason === "string" && error.reason.trim()) return error.reason;
@@ -55,7 +58,7 @@
         const serialized = JSON.stringify(error);
         if (serialized && serialized !== "{}") return serialized;
       } catch {
-        // ignore
+
       }
     }
     return "Ошибка геокодирования";
@@ -111,7 +114,7 @@
       }
       sessionStorage.setItem("checkout_payload", JSON.stringify(checkout));
     } catch {
-      // noop
+
     }
   }
 
@@ -140,6 +143,21 @@
   }
 
   async function reverseGeocodePoint(coords, fallbackCity) {
+    const lat = Number(coords?.[0]);
+    const lng = Number(coords?.[1]);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      try {
+        const data = await API.request(`/delivery/reverse-geocode?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`);
+        return {
+          coords,
+          address: data.address || "Точка на карте",
+          city: data.city || fallbackCity || "",
+        };
+      } catch (error) {
+        console.warn("server reverse geocode", error);
+      }
+    }
+
     if (!window.ymaps) {
       return {
         coords,
@@ -237,21 +255,37 @@
     }
 
     const addressVariants = [...new Set(variants.filter(Boolean))];
+    const withCity = [];
+    const withoutCity = [];
+
     addressVariants.forEach((variant) => {
-      const forms = [variant, `${variant}, Россия`, `Россия, ${variant}`];
       if (normalizedCity) {
-        forms.push(`${variant}, ${normalizedCity}`);
-        forms.push(`${normalizedCity}, ${variant}`);
-        forms.push(`Россия, ${normalizedCity}, ${variant}`);
+        [
+          `Россия, ${normalizedCity}, ${variant}`,
+          `${normalizedCity}, ${variant}`,
+          `${variant}, ${normalizedCity}`,
+        ].forEach((query) => {
+          const cleanedQuery = normalizeAddressText(query);
+          if (cleanedQuery && !seen.has(cleanedQuery.toLowerCase())) {
+            seen.add(cleanedQuery.toLowerCase());
+            withCity.push(cleanedQuery);
+          }
+        });
       }
-      forms.forEach((query) => {
+      [variant, `${variant}, Россия`, `Россия, ${variant}`].forEach((query) => {
         const cleanedQuery = normalizeAddressText(query);
         if (cleanedQuery && !seen.has(cleanedQuery.toLowerCase())) {
           seen.add(cleanedQuery.toLowerCase());
-          queries.push(cleanedQuery);
+          withoutCity.push(cleanedQuery);
         }
       });
     });
+
+    if (normalizedCity) {
+      queries.push(...withCity, ...withoutCity);
+    } else {
+      queries.push(...withoutCity);
+    }
 
     if (!queries.length && baseAddress) {
       queries.push(baseAddress);
@@ -259,7 +293,24 @@
     return queries;
   }
 
-  async function geocodeAddress(address, city) {
+  async function geocodeAddressViaServer(address, city) {
+    const params = new URLSearchParams();
+    params.set("address", address);
+    if (city) params.set("city", city);
+    const data = await API.request(`/delivery/geocode-address?${params.toString()}`);
+    const lat = Number(data.lat);
+    const lng = Number(data.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new Error("Сервер не вернул координаты адреса.");
+    }
+    return {
+      coords: [lat, lng],
+      address: data.address || address,
+      city: city || data.city || "",
+    };
+  }
+
+  async function geocodeAddressViaYmaps(address, city) {
     const queries = buildAddressQueries(address, city);
     let lastError = null;
 
@@ -310,6 +361,21 @@
     throw lastError || new Error("Адрес не найден.");
   }
 
+  async function geocodeAddress(address, city) {
+    try {
+      return await geocodeAddressViaServer(address, city);
+    } catch (serverError) {
+      if (!window.ymaps) {
+        throw serverError;
+      }
+      try {
+        return await geocodeAddressViaYmaps(address, city);
+      } catch (ymapsError) {
+        throw serverError.status ? serverError : ymapsError;
+      }
+    }
+  }
+
   async function selectPointByCoords(coords, options = {}) {
     const normalizedPoint = normalizePoint({ coords });
     if (!normalizedPoint?.coords) return;
@@ -350,6 +416,10 @@
   async function searchByAddress() {
     const address = String(lineInput?.value || "").trim();
     const city = String(cityInput?.value || "").trim();
+    if (!city) {
+      setStatus("Сначала укажите город в верхнем поле.", true);
+      return;
+    }
     if (!address) {
       setStatus("Введите адрес для поиска.", true);
       return;

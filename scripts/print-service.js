@@ -274,7 +274,7 @@
     try {
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch (_error) {
-      // noop
+
     }
   }
 
@@ -323,7 +323,7 @@
       sessionStorage.removeItem(DRAFT_KEY);
       sessionStorage.removeItem(QUOTE_STEP_KEY);
     } catch (_error) {
-      // noop
+
     }
   }
 
@@ -446,11 +446,7 @@
     return Boolean(localModelFile || uploadedFile?.path);
   }
 
-  /**
-   * Разрешён ли переход на checkout: пользователь взаимодействовал с калькулятором,
-   * заполнены обязательные поля и итоговая цена больше нуля.
-   * @returns {boolean}
-   */
+  
   function canCheckoutToPayment() {
     if (priceLoading) return false;
     const payload = buildPayload();
@@ -472,8 +468,7 @@
   function getThicknessesByTemplate(selectedTemplate) {
     const globalThicknesses = getGlobalActiveThicknesses();
     const allowed = (selectedTemplate?.thicknesses || []).map((value) => Number(value));
-    // Fallback: if template is missing or does not intersect with active options,
-    // keep thickness selectable from global active settings.
+
     if (!allowed.length) return globalThicknesses;
     const filtered = globalThicknesses.filter((row) => allowed.includes(Number(row.code)));
     return filtered.length ? filtered : globalThicknesses;
@@ -659,9 +654,7 @@
       const availableTechCodes = new Set(printInventory.variants.map((variant) => variant.technologyCode));
       printInventory.technologies = printInventory.technologies.filter((item) => availableTechCodes.has(item.code));
     }
-    // Do not prefill options directly on initial load, otherwise browser picks
-    // first values and price state looks "selected" before user interaction.
-    // Selectors are populated by sync*Selectors with explicit placeholders.
+
     if (service.type === "print") syncPrintSelectors();
     else syncNonPrintSelectors();
   }
@@ -1862,9 +1855,7 @@
   function redirectToLoginForCheckout() {
     try {
       sessionStorage.setItem("app.postLoginRedirect", "checkout.html");
-    } catch (_error) {
-      // noop
-    }
+    } catch (_error) {}
     window.location.href = "login.html?mode=register&next=checkout.html";
   }
 

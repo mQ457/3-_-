@@ -20,9 +20,7 @@
     return { name: "Вы", roleClass: "is-user" };
   }
 
-  /**
-   * Показывает/скрывает форму ответа и подсказку о закрытом чате в зависимости от статуса треда.
-   */
+  
   function syncReplyFormVisibility() {
     if (supportChatClosedNote) {
       const showClosedHint = Boolean(activeThreadId) && activeThreadStatus === "closed";

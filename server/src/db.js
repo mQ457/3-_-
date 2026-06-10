@@ -16,8 +16,6 @@ function createPool() {
     };
   }
 
-  // Local dev fallback: run fully in-memory Postgres compatible DB.
-  // This keeps the backend runnable even without installing/configuring Postgres.
   const { newDb } = require("pg-mem");
   const mem = newDb({ autoCreateForeignKeyIndices: true });
   mem.public.registerFunction({

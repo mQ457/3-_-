@@ -60,7 +60,7 @@ img {
   height: auto;
 }
 
-/* Layout helpers */
+
 .container {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
@@ -102,7 +102,7 @@ img {
   line-height: 1.35;
 }
 
-/* Buttons */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -167,7 +167,7 @@ img {
   border-color: rgba(234, 77, 58, .75);
 }
 
-/* Inputs */
+
 .field {
   display: flex;
   flex-direction: column;
@@ -242,7 +242,7 @@ img {
   margin-top: 5px;
 }
 
-/* Top minimal */
+
 .breadcrumb {
   display: flex;
   align-items: center;
@@ -265,7 +265,7 @@ img {
   display: flex;
 }
 
-/* Landing */
+
 .landing {
   background: #f5f5f6;
   padding-bottom: 70px;
@@ -480,7 +480,7 @@ img {
   line-height: 1.35;
 }
 
-/* App shell */
+
 .app-shell {
   display: flex;
   gap: 18px;
@@ -660,7 +660,7 @@ img {
   color: var(--muted);
 }
 
-/* Print pages: stepper & panels */
+
 .pill-group {
   display: flex;
   gap: 12px;
@@ -778,7 +778,7 @@ img {
   padding: 15px;
 }
 
-/* Print step 3: full-panel 3Д preview */
+
 .panel-grey--model {
   position: relative;
   display: flex;
@@ -955,7 +955,7 @@ button.model-panel__file-name {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-/* Replace-file dialog (print-step-3) */
+
 .model-replace-dialog[hidden] {
   display: none !important;
 }
@@ -1096,7 +1096,7 @@ button.model-panel__file-name {
   margin-top: 14px;
 }
 
-/* Address */
+
 .addr-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1220,7 +1220,7 @@ button.model-panel__file-name {
   margin-top: 6px;
 }
 
-/* Payment */
+
 .pay-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1369,7 +1369,7 @@ button.model-panel__file-name {
   display: inline-block;
 }
 
-/* Profile */
+
 .profile-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1493,7 +1493,7 @@ button.model-panel__file-name {
   max-width: 420px;
 }
 
-/* Orders */
+
 .orders-card {
   padding: 0;
   overflow: hidden;
@@ -1570,7 +1570,7 @@ button.model-panel__file-name {
   transition: transform .24s ease;
 }
 
-/* Стрелка по умолчанию смотрит вправо: вниз = закрыто, вверх = открыто */
+
 .admin-orders-toggle .admin-orders-toggle__icon {
   transition: transform 0.2s ease;
   transform: rotate(90deg);
@@ -1749,7 +1749,7 @@ button.model-panel__file-name {
   }
 }
 
-/* Login */
+
 .login-wrap {
   position: relative;
   min-height: 100vh;
@@ -2166,7 +2166,7 @@ body[data-auth-mode="register"] .login-right {
   border-radius: 12px;
 }
 
-/* Responsive */
+
 @media (max-width: 980px) {
   .container {
     width: min(1180px, calc(100% - 26px));
@@ -2297,14 +2297,14 @@ body[data-auth-mode="register"] .login-right {
   }
 }
 
-/* ===== Landing (главная 1-в-1 по макету) ===== */
+
 .landing-home {
   background: #ffffff;
   padding-bottom: 40px;
   min-height: 100vh;
 }
 
-/* ===== Landing (главная точная верстка) ===== */
+
 .landing-page {
   background: #ffffff;
   color: #2c2c2c;
@@ -2312,12 +2312,12 @@ body[data-auth-mode="register"] .login-right {
   overflow-x: clip;
 }
 
-/* На главной контейнер немного уже, как на макете */
+
 .landing-page .container {
   width: min(1120px, calc(100% - 56px));
 }
 
-/* —— Landing: лёгкие анимации (минимализм) —— */
+
 @keyframes landing-hero-line-in {
   from {
     opacity: 0;
@@ -2532,7 +2532,7 @@ body[data-auth-mode="register"] .login-right {
   padding: 18px 0 40px;
 }
 
-/* Волна фона снизу */
+
 .landing-hero__inner {
   position: relative;
   z-index: 1;
@@ -2815,7 +2815,7 @@ body[data-auth-mode="register"] .login-right {
   background: var(--accent2) !important;
 }
 
-/* —— Портфолио / альбом работ —— */
+
 .landing-portfolio {
   margin-top: 100px;
   padding: 0px 0 0px;
@@ -3243,7 +3243,7 @@ body[data-auth-mode="register"] .login-right {
   display: block;
 }
 
-/* Тест: убрать “старые” landing-home placeholder-декорации для главной */
+
 .landing-page .img-ph {
   border: none !important;
 }
@@ -3378,7 +3378,7 @@ body[data-auth-mode="register"] .login-right {
   }
 }
 
-/* ===== Footer (единый для всех страниц) ===== */
+
 .site-footer {
   background: #41414123;
   padding: 26px 0;
@@ -3471,7 +3471,7 @@ body[data-auth-mode="register"] .login-right {
   position: relative;
 }
 
-/* Верхняя светлая “волна/фон” */
+
 .landing-home__hero::before {
   content: "";
   position: absolute;
@@ -3550,7 +3550,7 @@ body[data-auth-mode="register"] .login-right {
     repeating-linear-gradient(45deg, rgba(234, 77, 58, .12), rgba(234, 77, 58, .02) 10px, transparent 10px, transparent 22px);
 }
 
-/* Карточки 3 услуг (верх) */
+
 .landing-home__cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3610,7 +3610,7 @@ body[data-auth-mode="register"] .login-right {
   background: var(--accent2) !important;
 }
 
-/* Список услуг (3 строки) */
+
 .landing-home__services {
   margin-top: 10px;
   padding-top: 6px;
@@ -3664,7 +3664,7 @@ body[data-auth-mode="register"] .login-right {
   width: 120px;
 }
 
-/* Отзывы */
+
 .landing-home__reviews {
   margin-top: 22px;
 }
@@ -4041,7 +4041,7 @@ body[data-auth-mode="register"] .login-right {
   min-height: 16px;
 }
 
-/* Mobile layout для главной */
+
 @media (max-width: 980px) {
   .landing-home__hero-inner {
     grid-template-columns: 1fr;
@@ -4118,7 +4118,7 @@ body[data-auth-mode="register"] .login-right {
   }
 }
 
-/* ===== Responsive Overhaul (global) ===== */
+
 @media (max-width: 1200px) {
   .container {
     width: min(1180px, calc(100% - 28px));
@@ -4990,7 +4990,7 @@ body[data-auth-mode="register"] .login-right {
   min-height: 38px;
 }
 
-/* Quote request wizard: light style matching the 3D print form */
+
 .quote-layout {
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, .75fr);
   gap: 24px;

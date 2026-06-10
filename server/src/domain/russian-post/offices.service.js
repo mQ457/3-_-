@@ -104,7 +104,7 @@ async function searchOfficesFromCache(city, limit = 80) {
       const parsed = row.meta_json ? JSON.parse(row.meta_json) : null;
       if (parsed?.postalCode) return parsed;
     } catch {
-      // ignore
+
     }
     return normalizeOffice({
       "postal-code": row.postal_code,

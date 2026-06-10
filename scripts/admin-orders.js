@@ -10,11 +10,7 @@
   const progressStatuses = new Set(["Ожидает оценки", "Ожидание звонка", "В очереди", "Печатается", "Пост-обработка", "В работе", "Сканирование", "Печать", "Посылка в пути"]);
   const ORDER_TOGGLE_SRC = "image/Frame_1_1179.png";
 
-  /**
-   * Экранирует значение для подстановки в HTML-атрибут.
-   * @param {string} value
-   * @returns {string}
-   */
+  
   function escapeAttr(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -22,11 +18,6 @@
       .replace(/</g, "&lt;");
   }
 
-  /**
-   * Имя файла для атрибута download у ссылки на модель заказа.
-   * @param {{ fileName?: string, filePath?: string }} order
-   * @returns {string}
-   */
   function downloadFileName(order) {
     const raw = String(order.fileName || "").trim();
     if (raw) return raw.split(/[/\\]/).pop() || "model.stl";

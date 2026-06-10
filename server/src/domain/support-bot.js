@@ -46,22 +46,15 @@ const AI_PROVIDER = (() => {
 let gigachatTokenCache = null;
 
 const HUMAN_PATTERNS = [
-  /вызов[иьяю]*\s+(консультант|оператор|человек)/i,
-  /позов[иьяю]*\s+(консультант|оператор|человек)/i,
-  /зов[иьяю]*\s+(консультант|оператор|человек)/i,
-  /приглас[иьяю]*\s+(агент|оператор|человек|консультант)/i,
-  /приголас[иьяю]*\s+(агент|оператор|человек|консультант)/i,
+  /вызов[иьяю]*\s+(консультант|оператор|человек|специалист)/i,
+  /позов[иьяю]*\s+(консультант|оператор|человек|специалист)/i,
   /подключ[иьяю]*\s+(оператор|консультант|человек|специалист)/i,
-  /нуж[её]н\s+(оператор|консультант|человек|специалист)/i,
-  /нужна\s+(помощь|связь)\s+(оператор|консультант|человек|специалист)/i,
-  /соедин[иьяю]*\s+с\s+(оператор|консультант|человек)/i,
-  /свяж[иьяю]*\s+с\s+(оператор|консультант|человек|поддержк)/i,
-  /(живой|реальный)\s+человек/i,
-  /человек/i,
-  /оператор/i,
-  /консультант/i,
-  /специалист/i,
-  /агент/i,
+  /нуж[её]н\s+(живой\s+)?(оператор|консультант|человек|специалист)/i,
+  /соедин[иьяю]*\s+с\s+(оператор|консультант|человек|специалист)/i,
+  /свяж[иьяю]*\s+с\s+(оператор|консультант|человек|специалист)/i,
+  /(живой|реальный)\s+(оператор|консультант|человек|специалист)/i,
+  /хочу\s+(оператор|консультант|человек|специалист)/i,
+  /передай\s+(оператор|консультант|человек|специалист|админ)/i,
 ];
 
 function wantsHumanByMessage(text) {
@@ -78,21 +71,24 @@ function buildPrompt({ subject, userMessage, history }) {
     .join("\n");
 
   return `
-Ты ИИ-ассистент техподдержки сервиса 3Д-печати.
-Отвечай кратко, дружелюбно и по делу.
-Отвечай только на русском языке.
-Если данных недостаточно — задавай 1-2 уточняющих вопроса.
-Если вопрос нельзя решить без человека или ты не уверен — предложи подключить консультанта.
-Если пользователь просит помочь с сайтом, объясняй шагами, куда перейти и что нажать.
-Если пользователь спрашивает про 3Д-печать, давай практичную рекомендацию по технологии/материалу с кратким обоснованием.
+Ты ИИ-ассистент техподдержки сервиса 3Д-печати, моделирования и сканирования.
+Отвечай только на русском языке. Тон: вежливый, понятный, без канцелярита.
+Используй короткие абзацы и нумерованные шаги. Можно выделять **жирным** названия кнопок и разделов.
+
+Правила:
+- Если клиент пишет своими словами («хочу напечатать чехол») — назови услугу, технологию, материал и куда нажать на сайте.
+- Если спрашивает про кнопку или раздел — укажи страницу → кнопку → что произойдёт.
+- Если данных мало — action "clarify" и 1–2 уточняющих вопроса.
+- Если ошибка сайта, оплата, возврат, ручная правка заказа или ты не уверен — action "handoff".
+- При handoff обязательно напиши: обращение передано консультанту/администратору, ответ будет в этом чате.
 
 Формат ответа строго JSON:
 {"action":"answer|clarify|handoff","message":"текст для клиента"}
 
 Где:
-- "answer" — когда дал решение;
-- "clarify" — когда нужны уточнения;
-- "handoff" — когда нужен живой консультант.
+- "answer" — полный полезный ответ;
+- "clarify" — нужны уточнения, но бот продолжает диалог;
+- "handoff" — передано живому консультанту.
 
 Контекст и база знаний:
 ${knowledgeContext}
@@ -361,7 +357,7 @@ async function callModel(prompt) {
 }
 
 async function processSupportBotReply({ threadId, userMessage }) {
-  // eslint-disable-next-line no-console
+
   console.log(`[support-bot] thread=${threadId} provider=${AI_PROVIDER} enabled=${SUPPORT_BOT_ENABLED ? "1" : "0"}`);
   const safeMessage = String(userMessage || "").trim();
   if (!safeMessage) return { handledByBot: false, escalated: false };
@@ -377,7 +373,10 @@ async function processSupportBotReply({ threadId, userMessage }) {
 
   if (wantsHumanByMessage(safeMessage)) {
     await escalateThread(threadId);
-    await insertBotMessage(threadId, "Подключаю консультанта. Пожалуйста, ожидайте ответа специалиста.");
+    await insertBotMessage(
+      threadId,
+      "Понял вас. Передаю обращение консультанту — администратор уже видит запрос. Специалист ответит в этом чате, пожалуйста, оставайтесь на связи."
+    );
     return { handledByBot: false, escalated: true, reason: "human_requested" };
   }
 
@@ -397,14 +396,19 @@ async function processSupportBotReply({ threadId, userMessage }) {
 
       await markThreadForBot(threadId);
       await insertBotMessage(threadId, parsed.message);
-      return { handledByBot: true, escalated: false, reason: "stub_answer", categoryId: parsed.categoryId || null };
+      return {
+        handledByBot: true,
+        escalated: false,
+        reason: parsed.action === "clarify" ? "stub_clarify" : "stub_answer",
+        categoryId: parsed.categoryId || null,
+      };
     } catch (error) {
-      // eslint-disable-next-line no-console
+
       console.error("[support-bot] stub reply failed:", error?.message || error);
       await escalateThread(threadId);
       await insertBotMessage(
         threadId,
-        "Не получилось обработать запрос автоматически. Передаю обращение консультанту."
+        "Не получилось обработать запрос автоматически. Я передал обращение консультанту — администратор уведомлён, ответ поступит в этом чате."
       );
       return { handledByBot: false, escalated: true, reason: "stub_error" };
     }
@@ -422,7 +426,7 @@ async function processSupportBotReply({ threadId, userMessage }) {
     if (!parsed) {
       const fallbackMessage = normalizeBotText(raw);
       if (fallbackMessage) {
-        // Many models sometimes ignore strict JSON format; use plain text as valid bot reply.
+
         await markThreadForBot(threadId);
         await insertBotMessage(threadId, fallbackMessage);
         return { handledByBot: true, escalated: false, reason: "fallback_plain_text" };
@@ -442,7 +446,7 @@ async function processSupportBotReply({ threadId, userMessage }) {
     await insertBotMessage(threadId, parsed.message);
     return { handledByBot: true, escalated: false, reason: parsed.action };
   } catch (error) {
-    // eslint-disable-next-line no-console
+
     console.error("[support-bot] model request failed:", error?.message || error);
     await escalateThread(threadId);
     await insertBotMessage(

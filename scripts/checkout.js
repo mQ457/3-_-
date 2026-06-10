@@ -48,9 +48,7 @@
     }
   }
 
-  /**
-   * Не даём оформлять оплату при нулевой сумме: редирект на шаг услуги (прямой заход на checkout с ?totalAmount=0).
-   */
+  
   function redirectIfCheckoutTotalInvalid() {
     try {
       const merged = getPayload();
@@ -95,7 +93,7 @@
     try {
       sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, String(target || "checkout.html"));
     } catch (_error) {
-      // noop
+
     }
   }
 

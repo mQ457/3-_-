@@ -269,7 +269,7 @@
   function connectRealtime() {
     try {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      realtimeSocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      realtimeSocket = new WebSocket(`${protocol}
       realtimeSocket.addEventListener("message", (event) => {
         let payload = null;
         try {
@@ -280,7 +280,7 @@
         if (payload?.event === "order:updated") loadOrders();
       });
     } catch {
-      // noop
+
     }
   }
 

@@ -30,12 +30,16 @@
   }
 
   async function request(path, method, payload) {
-    const response = await fetch(`${API_BASE}${path}`, {
+    const options = {
       method,
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      headers: {},
+    };
+    if (payload !== undefined && method !== "GET" && method !== "HEAD") {
+      options.headers["Content-Type"] = "application/json";
+      options.body = JSON.stringify(payload);
+    }
+    const response = await fetch(`${API_BASE}${path}`, options);
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(data.message || "Ошибка запроса");
@@ -104,7 +108,7 @@
   }
 
   function sanitizeRedirect(value) {
-    const normalized = String(value || "").trim().toLowerCase().replace(/^\
+    const normalized = String(value || "").trim().toLowerCase().replace(/^\//, "");
     if (!ALLOWED_REDIRECTS.has(normalized)) return "";
     return normalized;
   }

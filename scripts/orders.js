@@ -269,7 +269,7 @@
   function connectRealtime() {
     try {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      realtimeSocket = new WebSocket(`${protocol}
+      realtimeSocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
       realtimeSocket.addEventListener("message", (event) => {
         let payload = null;
         try {

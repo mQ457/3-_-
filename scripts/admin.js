@@ -66,7 +66,10 @@
   }
 
   async function renderDashboard() {
-    const [dashboard, orders] = await Promise.all([API.request("/admin/dashboard"), API.request("/admin/orders")]);
+    const [dashboard, orders] = await Promise.all([
+      API.request("/admin/dashboard"),
+      API.request("/admin/orders?limit=12"),
+    ]);
     statsRoot.innerHTML = `
       <div class="stat"><div class="label">Пользователи</div><div class="value">${dashboard.totalUsers}</div></div>
       <div class="stat"><div class="label">Заказы</div><div class="value">${dashboard.totalOrders}</div></div>
@@ -98,14 +101,14 @@
       window.location.replace("login.html?next=admin.html");
       return;
     }
-    try {
-      await renderDashboard();
-      await loadEmailSettings();
-    } catch (error) {
+    if (statsRoot) {
+      statsRoot.innerHTML = `<div class="stat"><div class="label">Загрузка</div><div class="value">...</div></div>`;
+    }
+    Promise.all([renderDashboard(), loadEmailSettings()]).catch((error) => {
       if (statsRoot) {
         statsRoot.innerHTML = `<div class="stat"><div class="label">Ошибка загрузки</div><div class="value">${error.message || "—"}</div></div>`;
       }
-    }
+    });
   }
 
   refreshBtn?.addEventListener("click", () => runWithButtonFeedback(refreshBtn, "Обновляем...", renderDashboard));

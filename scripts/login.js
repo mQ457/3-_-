@@ -203,13 +203,11 @@
 
       }
       setStatus("Успешный вход. Переходим...", false, "login");
-      setTimeout(() => {
-        try {
-          window.location.href = consumePostAuthTarget(data?.user?.role);
-        } catch (redirectError) {
-          setStatus(redirectError.message || "Нет доступа.", true, "login");
-        }
-      }, 300);
+      try {
+        window.location.href = consumePostAuthTarget(data?.user?.role);
+      } catch (redirectError) {
+        setStatus(redirectError.message || "Нет доступа.", true, "login");
+      }
     } catch (error) {
       setStatus(error.message, true);
     }
@@ -228,13 +226,11 @@
 
       }
       setStatus("Аккаунт создан. Переходим дальше...", false, "register");
-      setTimeout(() => {
-        try {
-          window.location.href = consumePostAuthTarget(data?.user?.role);
-        } catch (redirectError) {
-          setStatus(redirectError.message || "Нет доступа.", true, "register");
-        }
-      }, 300);
+      try {
+        window.location.href = consumePostAuthTarget(data?.user?.role);
+      } catch (redirectError) {
+        setStatus(redirectError.message || "Нет доступа.", true, "register");
+      }
     } catch (error) {
       setStatus(error.message, true, "register");
     }

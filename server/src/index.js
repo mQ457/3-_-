@@ -231,3 +231,5 @@ if (!isProduction) {
     server.ref();
   }
 }
+
+module.exports = app;

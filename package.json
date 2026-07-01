@@ -4,7 +4,7 @@
   "description": "3D print service — frontend + Express backend",
   "scripts": {
     "build": "npm install --prefix server --omit=dev",
-    "start": "npm --prefix server start",
+    "start": "node server.js",
     "dev": "npm --prefix server run dev",
     "setup": "npm install --prefix server"
   }

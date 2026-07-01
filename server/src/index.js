@@ -140,6 +140,7 @@ const server = app.listen(port, host, () => {
   const aiProvider = String(process.env.AI_PROVIDER || "auto").trim() || "auto";
 
   console.log(`Site started at http://${host}:${port}`);
+  console.log(`PORT=${port} HOST=${host}`);
 
   console.log(`Environment: ${isProduction ? "production" : "development"} | Database: ${dbLabel} | AI: ${aiProvider}`);
 
@@ -164,6 +165,20 @@ const server = app.listen(port, host, () => {
 
     openUrl(`http://localhost:${port}`);
   }
+});
+
+server.on("error", (error) => {
+  console.error(`Failed to bind ${host}:${port}:`, error);
+  process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
 });
 
 const wsServer = new WebSocketServer({

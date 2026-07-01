@@ -7,8 +7,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "postinstall": "node scripts/install-server-deps.js",
-    "build": "node scripts/install-server-deps.js",
+    "build": "npm install --prefix server --omit=dev",
     "start": "node index.js",
     "dev": "npm --prefix server run dev",
     "setup": "npm install --prefix server"
